@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/nerdneilsfield/tiny-auth/internal/auth"
 	"github.com/nerdneilsfield/tiny-auth/internal/config"
+	"github.com/nerdneilsfield/tiny-auth/internal/ratelimit"
 	"go.uber.org/zap"
 )
 
@@ -19,8 +20,9 @@ type Server struct {
 	Config       *config.Config
 	Store        *auth.AuthStore
 	Logger       *zap.Logger
-	trustedCIDRs []*net.IPNet // 可信代理 CIDR 列表（解析后）
-	mu           sync.RWMutex // 用于配置热重载时的并发控制
+	RateLimiter  *ratelimit.Limiter // 速率限制器
+	trustedCIDRs []*net.IPNet       // 可信代理 CIDR 列表（解析后）
+	mu           sync.RWMutex       // 用于配置热重载时的并发控制
 }
 
 // NewServer 创建新的 HTTP 服务器
@@ -38,10 +40,28 @@ func NewServer(cfg *config.Config, store *auth.AuthStore, logger *zap.Logger) *S
 		)
 	}
 
+	// 初始化速率限制器
+	var rateLimiter *ratelimit.Limiter
+	if cfg.RateLimit.Enabled {
+		rateLimiter = ratelimit.NewLimiter(
+			cfg.RateLimit.MaxAttempts,
+			time.Duration(cfg.RateLimit.WindowSecs)*time.Second,
+			time.Duration(cfg.RateLimit.BanSecs)*time.Second,
+		)
+		logger.Info("rate limiting enabled",
+			zap.Int("max_attempts", cfg.RateLimit.MaxAttempts),
+			zap.Int("window_secs", cfg.RateLimit.WindowSecs),
+			zap.Int("ban_secs", cfg.RateLimit.BanSecs),
+		)
+	} else {
+		logger.Info("rate limiting disabled")
+	}
+
 	srv := &Server{
 		Config:       cfg,
 		Store:        store,
 		Logger:       logger,
+		RateLimiter:  rateLimiter,
 		trustedCIDRs: trustedCIDRs,
 	}
 

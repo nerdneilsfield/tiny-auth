@@ -40,6 +40,17 @@ func ApplyDefaults(cfg *Config) {
 		cfg.Logging.Level = "info"
 	}
 
+	// 速率限制默认值
+	if cfg.RateLimit.MaxAttempts == 0 {
+		cfg.RateLimit.MaxAttempts = 5 // 默认 5 次尝试
+	}
+	if cfg.RateLimit.WindowSecs == 0 {
+		cfg.RateLimit.WindowSecs = 60 // 默认 60 秒窗口
+	}
+	if cfg.RateLimit.BanSecs == 0 {
+		cfg.RateLimit.BanSecs = 300 // 默认封禁 5 分钟
+	}
+
 	// Basic Auth 默认角色
 	for i := range cfg.BasicAuths {
 		if len(cfg.BasicAuths[i].Roles) == 0 {

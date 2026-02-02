@@ -21,10 +21,28 @@ func (s *Server) HandleAuth(c *fiber.Ctx) error {
 	// 1. 安全地提取请求信息（验证可信代理）
 	s.mu.RLock()
 	trustedCIDRs := s.trustedCIDRs
+	rateLimiter := s.RateLimiter
 	s.mu.RUnlock()
 
 	// 获取真实客户端 IP（只信任来自可信代理的 X-Forwarded-For）
 	clientIP := getClientIP(c, cfg, trustedCIDRs)
+
+	// 2. 速率限制检查
+	if rateLimiter != nil {
+		allowed, retryAfter := rateLimiter.Allow(clientIP)
+		if !allowed {
+			s.Logger.Warn("rate limit exceeded",
+				zap.String("client_ip", clientIP),
+				zap.Duration("retry_after", retryAfter),
+			)
+			c.Set("Retry-After", retryAfter.String())
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"error":       "Too many authentication attempts",
+				"retry_after": retryAfter.Seconds(),
+				"timestamp":   time.Now().Unix(),
+			})
+		}
+	}
 
 	// 获取转发的 headers（只信任来自可信代理的 X-Forwarded-*）
 	originalHost, originalURI, originalMethod, trusted := getForwardedHeaders(c, trustedCIDRs)
@@ -104,6 +122,11 @@ func (s *Server) HandleAuth(c *fiber.Ctx) error {
 	// 5. 检查策略约束
 	if result != nil {
 		if policy.CheckPolicy(matchedPolicy, result, store) {
+			// 认证成功，重置速率限制
+			if rateLimiter != nil {
+				rateLimiter.Reset(clientIP)
+			}
+
 			policyName := ""
 			if matchedPolicy != nil {
 				policyName = matchedPolicy.Name

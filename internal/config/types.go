@@ -5,6 +5,7 @@ type Config struct {
 	Server        ServerConfig      `toml:"server"`
 	Headers       HeadersConfig     `toml:"headers"`
 	Logging       LoggingConfig     `toml:"logging"`
+	RateLimit     RateLimitConfig   `toml:"rate_limit"`
 	BasicAuths    []BasicAuthConfig `toml:"basic_auth"`
 	BearerTokens  []BearerConfig    `toml:"bearer_token"`
 	APIKeys       []APIKeyConfig    `toml:"api_key"`
@@ -35,6 +36,14 @@ type HeadersConfig struct {
 type LoggingConfig struct {
 	Format string `toml:"format"` // 日志格式: "json" 或 "text"
 	Level  string `toml:"level"`  // 日志级别: "debug", "info", "warn", "error"
+}
+
+// RateLimitConfig 速率限制配置
+type RateLimitConfig struct {
+	Enabled     bool `toml:"enabled"`      // 是否启用速率限制
+	MaxAttempts int  `toml:"max_attempts"` // 时间窗口内的最大尝试次数
+	WindowSecs  int  `toml:"window_secs"`  // 时间窗口（秒）
+	BanSecs     int  `toml:"ban_secs"`     // 封禁时长（秒）
 }
 
 // BasicAuthConfig Basic 认证配置
