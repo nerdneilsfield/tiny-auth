@@ -1,6 +1,7 @@
 package server
 
 import (
+	"net"
 	"sync"
 	"time"
 
@@ -14,19 +15,34 @@ import (
 
 // Server 封装 Fiber 应用和配置
 type Server struct {
-	App    *fiber.App
-	Config *config.Config
-	Store  *auth.AuthStore
-	Logger *zap.Logger
-	mu     sync.RWMutex // 用于配置热重载时的并发控制
+	App          *fiber.App
+	Config       *config.Config
+	Store        *auth.AuthStore
+	Logger       *zap.Logger
+	trustedCIDRs []*net.IPNet // 可信代理 CIDR 列表（解析后）
+	mu           sync.RWMutex // 用于配置热重载时的并发控制
 }
 
 // NewServer 创建新的 HTTP 服务器
 func NewServer(cfg *config.Config, store *auth.AuthStore, logger *zap.Logger) *Server {
+	// 解析可信代理配置
+	trustedCIDRs := parseTrustedProxies(cfg.Server.TrustedProxies)
+	if len(trustedCIDRs) > 0 {
+		logger.Info("trusted proxies configured",
+			zap.Int("count", len(trustedCIDRs)),
+			zap.Strings("proxies", cfg.Server.TrustedProxies),
+		)
+	} else {
+		logger.Warn("no trusted proxies configured - X-Forwarded-* headers accepted from ANY source",
+			zap.String("recommendation", "set server.trusted_proxies for production"),
+		)
+	}
+
 	srv := &Server{
-		Config: cfg,
-		Store:  store,
-		Logger: logger,
+		Config:       cfg,
+		Store:        store,
+		Logger:       logger,
+		trustedCIDRs: trustedCIDRs,
 	}
 
 	// 创建 Fiber 应用
@@ -94,6 +110,9 @@ func (s *Server) Reload(cfg *config.Config, store *auth.AuthStore) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// 重新解析可信代理
+	s.trustedCIDRs = parseTrustedProxies(cfg.Server.TrustedProxies)
+
 	s.Config = cfg
 	s.Store = store
 
@@ -103,6 +122,7 @@ func (s *Server) Reload(cfg *config.Config, store *auth.AuthStore) {
 		zap.Int("api_keys", len(cfg.APIKeys)),
 		zap.Bool("jwt_enabled", cfg.JWT.Secret != ""),
 		zap.Int("route_policies", len(cfg.RoutePolicies)),
+		zap.Int("trusted_proxies", len(s.trustedCIDRs)),
 	)
 }
 

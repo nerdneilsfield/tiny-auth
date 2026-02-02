@@ -18,26 +18,34 @@ func (s *Server) HandleAuth(c *fiber.Ctx) error {
 	cfg := s.GetConfig()
 	store := s.GetStore()
 
-	// 1. 提取 Traefik 转发的原始请求信息
-	originalHost := c.Get("X-Forwarded-Host")
-	if originalHost == "" {
-		originalHost = c.Get("X-Forwarded-Server")
-	}
-	originalURI := c.Get("X-Forwarded-Uri")
-	originalMethod := c.Get("X-Forwarded-Method")
-	originalFor := c.Get("X-Forwarded-For")
-	if originalFor == "" {
-		originalFor = c.IP()
-	}
+	// 1. 安全地提取请求信息（验证可信代理）
+	s.mu.RLock()
+	trustedCIDRs := s.trustedCIDRs
+	s.mu.RUnlock()
+
+	// 获取真实客户端 IP（只信任来自可信代理的 X-Forwarded-For）
+	clientIP := getClientIP(c, cfg, trustedCIDRs)
+
+	// 获取转发的 headers（只信任来自可信代理的 X-Forwarded-*）
+	originalHost, originalURI, originalMethod, trusted := getForwardedHeaders(c, trustedCIDRs)
 	requestID := c.Get("X-Request-ID")
 
 	// 构建基础日志字段
 	logFields := []zap.Field{
 		zap.String("request_id", requestID),
-		zap.String("client_ip", originalFor),
+		zap.String("client_ip", clientIP),
+		zap.String("direct_ip", c.IP()),
+		zap.Bool("trusted_proxy", trusted),
 		zap.String("method", originalMethod),
 		zap.String("host", originalHost),
 		zap.String("uri", originalURI),
+	}
+
+	// 如果不是来自可信代理，记录警告
+	if !trusted && len(trustedCIDRs) > 0 {
+		s.Logger.Warn("untrusted proxy detected - using direct connection info",
+			append(logFields, zap.String("warning", "X-Forwarded-* headers ignored"))...,
+		)
 	}
 
 	// 2. 匹配路由策略

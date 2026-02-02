@@ -14,11 +14,12 @@ type Config struct {
 
 // ServerConfig 服务器配置
 type ServerConfig struct {
-	Port         string `toml:"port"`          // 监听端口
-	AuthPath     string `toml:"auth_path"`     // ForwardAuth 端点路径
-	HealthPath   string `toml:"health_path"`   // 健康检查端点路径
-	ReadTimeout  int    `toml:"read_timeout"`  // 读超时（秒）
-	WriteTimeout int    `toml:"write_timeout"` // 写超时（秒）
+	Port           string   `toml:"port"`            // 监听端口
+	AuthPath       string   `toml:"auth_path"`       // ForwardAuth 端点路径
+	HealthPath     string   `toml:"health_path"`     // 健康检查端点路径
+	ReadTimeout    int      `toml:"read_timeout"`    // 读超时（秒）
+	WriteTimeout   int      `toml:"write_timeout"`   // 写超时（秒）
+	TrustedProxies []string `toml:"trusted_proxies"` // 可信代理 IP/CIDR 列表（用于验证 X-Forwarded-* headers）
 }
 
 // HeadersConfig Header 配置
