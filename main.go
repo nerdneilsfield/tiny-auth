@@ -5,8 +5,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/nerdneilsfield/go-template/cmd"
 	loggerPkg "github.com/nerdneilsfield/shlogin/pkg/logger"
+	"github.com/nerdneilsfield/tiny-auth/cmd"
 	"go.uber.org/zap"
 )
 
@@ -20,8 +20,6 @@ var logger *loggerPkg.Logger
 
 func init() {
 	logger = loggerPkg.GetLogger()
-	defer logger.SyncLogs()
-	defer logger.Close()
 }
 
 // graceful shutdown
