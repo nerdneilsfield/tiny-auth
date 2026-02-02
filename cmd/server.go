@@ -37,7 +37,7 @@ func runServer(cmd *cobra.Command, args []string) error {
 	store := auth.BuildStore(cfg)
 
 	// 3. 创建服务器
-	srv := server.NewServer(cfg, store)
+	srv := server.NewServer(cfg, store, logger)
 
 	// 4. 设置信号处理（优雅关闭 + 配置重载）
 	sigChan := make(chan os.Signal, 1)
