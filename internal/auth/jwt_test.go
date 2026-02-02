@@ -313,3 +313,161 @@ func BenchmarkTryJWT_Invalid(b *testing.B) {
 		TryJWT(token, cfg)
 	}
 }
+
+// TestTryJWT_CustomUserClaim 测试自定义 user claim 名称
+func TestTryJWT_CustomUserClaim(t *testing.T) {
+	secret := "test_secret_key_at_least_32_chars_long_12345"
+
+	tests := []struct {
+		name          string
+		claims        jwt.MapClaims
+		userClaimName string
+		wantUser      string
+		wantSuccess   bool
+	}{
+		{
+			name: "使用 preferred_username claim",
+			claims: jwt.MapClaims{
+				"sub":                "user-id-123",
+				"preferred_username": "johndoe",
+				"exp":                time.Now().Add(time.Hour).Unix(),
+			},
+			userClaimName: "preferred_username",
+			wantUser:      "johndoe",
+			wantSuccess:   true,
+		},
+		{
+			name: "使用 email claim",
+			claims: jwt.MapClaims{
+				"sub":   "user-id-456",
+				"email": "jane@example.com",
+				"exp":   time.Now().Add(time.Hour).Unix(),
+			},
+			userClaimName: "email",
+			wantUser:      "jane@example.com",
+			wantSuccess:   true,
+		},
+		{
+			name: "使用 username claim",
+			claims: jwt.MapClaims{
+				"sub":      "user-id-789",
+				"username": "alice",
+				"exp":      time.Now().Add(time.Hour).Unix(),
+			},
+			userClaimName: "username",
+			wantUser:      "alice",
+			wantSuccess:   true,
+		},
+		{
+			name: "自定义 claim 不存在，回退到 sub",
+			claims: jwt.MapClaims{
+				"sub": "user-id-999",
+				"exp": time.Now().Add(time.Hour).Unix(),
+			},
+			userClaimName: "preferred_username",
+			wantUser:      "user-id-999",
+			wantSuccess:   true,
+		},
+		{
+			name: "自定义 claim 和 sub 都不存在",
+			claims: jwt.MapClaims{
+				"exp": time.Now().Add(time.Hour).Unix(),
+			},
+			userClaimName: "preferred_username",
+			wantSuccess:   false,
+		},
+		{
+			name: "默认使用 sub claim（未配置 user_claim_name）",
+			claims: jwt.MapClaims{
+				"sub":                "user-default",
+				"preferred_username": "should-not-use-this",
+				"exp":                time.Now().Add(time.Hour).Unix(),
+			},
+			userClaimName: "", // 空字符串表示使用默认
+			wantUser:      "user-default",
+			wantSuccess:   true,
+		},
+		{
+			name: "自定义 claim 为空字符串，应回退到 sub",
+			claims: jwt.MapClaims{
+				"sub":      "fallback-user",
+				"username": "",
+				"exp":      time.Now().Add(time.Hour).Unix(),
+			},
+			userClaimName: "username",
+			wantUser:      "fallback-user",
+			wantSuccess:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			token := generateTestJWT(secret, tt.claims)
+			cfg := &config.JWTConfig{
+				Secret:        secret,
+				UserClaimName: tt.userClaimName,
+			}
+
+			result := TryJWT(token, cfg)
+
+			if tt.wantSuccess {
+				if result == nil {
+					t.Fatalf("Expected successful authentication, got nil")
+				}
+
+				if result.User != tt.wantUser {
+					t.Errorf("Expected user %q, got %q", tt.wantUser, result.User)
+				}
+
+				if result.Method != "jwt" {
+					t.Errorf("Expected method jwt, got %s", result.Method)
+				}
+			} else {
+				if result != nil {
+					t.Errorf("Expected authentication failure, got result: %+v", result)
+				}
+			}
+		})
+	}
+}
+
+// TestTryJWT_CustomUserClaimWithRoles 测试自定义 user claim 与角色结合
+func TestTryJWT_CustomUserClaimWithRoles(t *testing.T) {
+	secret := "test_secret_key_at_least_32_chars_long_12345"
+
+	claims := jwt.MapClaims{
+		"sub":   "user-id-123",
+		"email": "test@example.com",
+		"roles": []interface{}{"admin", "editor"},
+		"exp":   time.Now().Add(time.Hour).Unix(),
+	}
+
+	token := generateTestJWT(secret, claims)
+	cfg := &config.JWTConfig{
+		Secret:        secret,
+		UserClaimName: "email",
+	}
+
+	result := TryJWT(token, cfg)
+
+	if result == nil {
+		t.Fatal("Expected successful authentication, got nil")
+	}
+
+	// 验证用户从 email claim 提取
+	if result.User != "test@example.com" {
+		t.Errorf("Expected user test@example.com, got %s", result.User)
+	}
+
+	// 验证角色仍然正常提取
+	if len(result.Roles) != 2 {
+		t.Errorf("Expected 2 roles, got %d", len(result.Roles))
+	}
+
+	expectedRoles := map[string]bool{"admin": true, "editor": true}
+	for _, role := range result.Roles {
+		if !expectedRoles[role] {
+			t.Errorf("Unexpected role: %s", role)
+		}
+	}
+}

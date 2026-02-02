@@ -14,7 +14,8 @@ import (
 func SuccessResponse(c *fiber.Ctx, cfg *config.Config, result *auth.AuthResult, policy *config.RoutePolicy) error {
 	// 设置认证方法 header
 	if cfg.Headers.MethodHeader != "" {
-		c.Set(cfg.Headers.MethodHeader, result.Method)
+		// 虽然 method 是系统生成的，但为了一致性也进行清理
+		c.Set(cfg.Headers.MethodHeader, sanitizeHeaderValue(result.Method))
 	}
 
 	// 设置用户 header
@@ -54,7 +55,9 @@ func SuccessResponse(c *fiber.Ctx, cfg *config.Config, result *auth.AuthResult, 
 
 	// 注入 Authorization header（如果策略指定）
 	if policy != nil && policy.InjectAuthorization != "" {
-		c.Set("Authorization", policy.InjectAuthorization)
+		// 清理并限制长度，防止超长 header 导致 HTTP 431
+		sanitized := sanitizeHeaderValue(policy.InjectAuthorization)
+		c.Set("Authorization", sanitized)
 	}
 
 	// 返回 200 OK

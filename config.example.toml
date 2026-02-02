@@ -92,6 +92,9 @@ roles = ["readonly"]
 secret = "your-256-bit-secret-key-here-must-be-at-least-32-chars-long"
 issuer = "auth-service"           # 期望的 issuer (iss claim)
 audience = "api"                  # 期望的 audience (aud claim)
+user_claim_name = "sub"           # 用户标识的 claim 名称（默认 "sub"）
+                                  # 支持: "sub", "preferred_username", "email", "username" 等
+                                  # 如果指定的 claim 不存在，会自动回退到 "sub"
 
 # ===== 路由策略配置 =====
 # 可选：基于 host/path/method 的细粒度认证控制

@@ -61,9 +61,10 @@ type APIKeyConfig struct {
 
 // JWTConfig JWT 配置
 type JWTConfig struct {
-	Secret   string `toml:"secret"`   // HS256 签名密钥（支持 env:VAR 语法）
-	Issuer   string `toml:"issuer"`   // 期望的 issuer (iss claim)
-	Audience string `toml:"audience"` // 期望的 audience (aud claim)
+	Secret        string `toml:"secret"`         // HS256 签名密钥（支持 env:VAR 语法）
+	Issuer        string `toml:"issuer"`         // 期望的 issuer (iss claim)
+	Audience      string `toml:"audience"`       // 期望的 audience (aud claim)
+	UserClaimName string `toml:"user_claim_name"` // 用户标识的 claim 名称（默认为 "sub"，可配置为 "preferred_username" 等）
 }
 
 // RoutePolicy 路由策略配置

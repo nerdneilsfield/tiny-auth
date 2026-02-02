@@ -60,10 +60,30 @@ func TryJWT(tokenString string, jwtCfg *config.JWTConfig) *AuthResult {
 		}
 	}
 
-	// 提取用户信息
-	user, _ := claims["sub"].(string)
+	// 提取用户信息（支持自定义 claim 名称）
+	var user string
+	
+	// 优先使用配置的 user claim 名称
+	userClaimName := jwtCfg.UserClaimName
+	if userClaimName == "" {
+		userClaimName = "sub" // 默认使用 sub claim
+	}
+	
+	// 从指定的 claim 提取用户标识
+	if userValue, ok := claims[userClaimName].(string); ok && userValue != "" {
+		user = userValue
+	}
+	
+	// 如果未找到用户标识，尝试回退到 sub（仅当配置的不是 sub 时）
+	if user == "" && userClaimName != "sub" {
+		if subValue, ok := claims["sub"].(string); ok && subValue != "" {
+			user = subValue
+		}
+	}
+	
+	// 如果仍然没有用户标识，认证失败
 	if user == "" {
-		return nil // sub claim 是必需的
+		return nil
 	}
 
 	// 提取角色（支持 roles 数组或单个 role 字符串）

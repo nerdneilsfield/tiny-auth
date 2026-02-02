@@ -165,64 +165,67 @@ func validateBasicAuths(configs []BasicAuthConfig) error {
 	return nil
 }
 
-func validateBearerTokens(configs []BearerConfig) error {
+// secretConfig 定义具有 name 和 secret 字段的配置接口
+type secretConfig interface {
+	getName() string
+	getSecret() string
+}
+
+// 为 BearerConfig 实现 secretConfig 接口
+func (c BearerConfig) getName() string   { return c.Name }
+func (c BearerConfig) getSecret() string { return c.Token }
+
+// 为 APIKeyConfig 实现 secretConfig 接口
+func (c APIKeyConfig) getName() string   { return c.Name }
+func (c APIKeyConfig) getSecret() string { return c.Key }
+
+// validateSecretConfigs 通用验证函数，使用泛型避免代码重复
+func validateSecretConfigs[T secretConfig](configs []T, secretFieldName string) error {
 	if len(configs) == 0 {
 		return nil
 	}
 
 	names := make(map[string]bool)
-	tokens := make(map[string]bool)
+	secrets := make(map[string]bool)
 
 	for _, cfg := range configs {
-		if cfg.Name == "" {
+		name := cfg.getName()
+		secret := cfg.getSecret()
+
+		// 验证 name 字段
+		if name == "" {
 			return fmt.Errorf("name cannot be empty")
 		}
-		if cfg.Token == "" {
-			return fmt.Errorf("[%s] token cannot be empty", cfg.Name)
+
+		// 验证 secret 字段
+		if secret == "" {
+			return fmt.Errorf("[%s] %s cannot be empty", name, secretFieldName)
 		}
 
-		if names[cfg.Name] {
-			return fmt.Errorf("duplicate name %q", cfg.Name)
+		// 检查重复 name
+		if names[name] {
+			return fmt.Errorf("duplicate name %q", name)
 		}
-		names[cfg.Name] = true
+		names[name] = true
 
-		if tokens[cfg.Token] {
-			return fmt.Errorf("duplicate token for name %q", cfg.Name)
+		// 检查重复 secret
+		if secrets[secret] {
+			return fmt.Errorf("duplicate %s for name %q", secretFieldName, name)
 		}
-		tokens[cfg.Token] = true
+		secrets[secret] = true
 	}
 
 	return nil
 }
 
+// validateBearerTokens 使用通用验证函数
+func validateBearerTokens(configs []BearerConfig) error {
+	return validateSecretConfigs(configs, "token")
+}
+
+// validateAPIKeys 使用通用验证函数
 func validateAPIKeys(configs []APIKeyConfig) error {
-	if len(configs) == 0 {
-		return nil
-	}
-
-	names := make(map[string]bool)
-	keys := make(map[string]bool)
-
-	for _, cfg := range configs {
-		if cfg.Name == "" {
-			return fmt.Errorf("name cannot be empty")
-		}
-		if cfg.Key == "" {
-			return fmt.Errorf("[%s] key cannot be empty", cfg.Name)
-		}
-
-		if names[cfg.Name] {
-			return fmt.Errorf("duplicate name %q", cfg.Name)
-		}
-		names[cfg.Name] = true
-
-		if keys[cfg.Key] {
-			return fmt.Errorf("duplicate key for name %q", cfg.Name)
-		}
-		keys[cfg.Key] = true
-	}
-
-	return nil
+	return validateSecretConfigs(configs, "key")
 }
 
 func validateJWT(cfg *JWTConfig) error {
