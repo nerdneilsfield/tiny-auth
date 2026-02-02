@@ -80,6 +80,7 @@ type JWTConfig struct {
 // RoutePolicy 路由策略配置
 type RoutePolicy struct {
 	Name                string   `toml:"name"`                  // 唯一标识符
+	Priority            int      `toml:"priority"`              // 优先级（数字越大优先级越高，默认 0）
 	Host                string   `toml:"host"`                  // Host 匹配模式
 	PathPrefix          string   `toml:"path_prefix"`           // 路径前缀
 	Method              string   `toml:"method"`                // HTTP 方法

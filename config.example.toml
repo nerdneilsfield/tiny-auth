@@ -116,6 +116,7 @@ user_claim_name = "sub"           # 用户标识的 claim 名称（默认 "sub"�
 # 示例：公共 API 允许匿名访问
 [[route_policy]]
 name = "public-api"
+priority = 10                  # 低优先级
 host = "api.public.com"
 path_prefix = "/public"
 allow_anonymous = true
@@ -123,6 +124,7 @@ allow_anonymous = true
 # 示例：Webhook 端点只允许特定 Bearer Token
 [[route_policy]]
 name = "webhook-endpoint"
+priority = 50                  # 中等优先级
 host = "hooks.example.com"
 path_prefix = "/webhook"
 allowed_bearer_names = ["prod-token"]
@@ -131,6 +133,7 @@ inject_authorization = "Bearer upstream-webhook-token"  # 可选：注入上游 
 # 示例：管理面板只允许 admin 用户
 [[route_policy]]
 name = "admin-panel"
+priority = 100                 # 高优先级
 host = "admin.example.com"
 allowed_basic_names = ["admin-user"]
 require_all_roles = ["admin"]
@@ -138,11 +141,18 @@ require_all_roles = ["admin"]
 # 示例：内部 API 只允许 JWT
 [[route_policy]]
 name = "internal-api"
+priority = 80                  # 较高优先级
 host = "internal.example.com"
 jwt_only = true
 
 # 示例：混合认证（要求特定角色）
 [[route_policy]]
 name = "mixed-auth"
+priority = 30                  # 低中优先级
 host = "mixed.example.com"
 require_any_role = ["admin", "service"]  # 必须有 admin 或 service 角色
+
+# 优先级说明：
+# - priority: 数字越大，优先级越高（默认 0）
+# - 优先级相同时，按配置文件中的顺序匹配
+# - 建议：特定路径用高优先级，通用路径用低优先级

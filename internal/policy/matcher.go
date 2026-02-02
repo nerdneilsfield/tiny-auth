@@ -1,16 +1,33 @@
 package policy
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/nerdneilsfield/tiny-auth/internal/config"
 )
 
 // MatchPolicy 匹配路由策略
+// 策略按优先级排序（priority 越大越优先），优先级相同时按配置顺序
 // 返回第一个匹配的策略，如果没有匹配则返回 nil
 func MatchPolicy(policies []config.RoutePolicy, host, uri, method string) *config.RoutePolicy {
-	for i := range policies {
-		p := &policies[i]
+	if len(policies) == 0 {
+		return nil
+	}
+
+	// 创建策略副本并按优先级排序
+	sortedPolicies := make([]config.RoutePolicy, len(policies))
+	copy(sortedPolicies, policies)
+
+	sort.SliceStable(sortedPolicies, func(i, j int) bool {
+		// 按 priority 降序排序（数字越大越优先）
+		// 优先级相同时保持原有顺序（StableSort）
+		return sortedPolicies[i].Priority > sortedPolicies[j].Priority
+	})
+
+	// 遍历排序后的策略
+	for i := range sortedPolicies {
+		p := &sortedPolicies[i]
 
 		// 匹配 host
 		if !matchHost(p.Host, host) {
