@@ -26,6 +26,13 @@ func CheckPolicy(policy *config.RoutePolicy, result *auth.AuthResult, store *aut
 
 // checkMethodRestrictions 检查认证方法限制
 func checkMethodRestrictions(policy *config.RoutePolicy, result *auth.AuthResult) bool {
+	// 🔒 CRITICAL: 全局 JWT Only 检查（必须在其他检查之前）
+	// 如果策略要求 JWT Only，非 JWT 请求直接拒绝
+	if policy.JWTOnly && result.Method != "jwt" {
+		return false
+	}
+
+	// 检查具体认证方法的白名单限制
 	switch result.Method {
 	case "basic":
 		// 如果指定了允许的 Basic Auth 名称，检查是否在列表中
@@ -46,13 +53,11 @@ func checkMethodRestrictions(policy *config.RoutePolicy, result *auth.AuthResult
 		}
 
 	case "jwt":
-		// JWT only 模式下，JWT 总是被允许
-		// 如果不是 JWT only 且没有其他限制，也允许
-		if policy.JWTOnly {
-			return true
-		}
+		// JWT 认证总是允许通过方法检查
+		return true
 	}
 
+	// 默认：如果没有配置白名单限制，允许通过
 	return true
 }
 
