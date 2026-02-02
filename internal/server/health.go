@@ -39,8 +39,8 @@ func (s *Server) HandleDebug(c *fiber.Ctx) error {
 	}
 
 	policyNames := make([]string, 0, len(cfg.RoutePolicies))
-	for _, p := range cfg.RoutePolicies {
-		policyNames = append(policyNames, p.Name)
+	for i := range cfg.RoutePolicies {
+		policyNames = append(policyNames, cfg.RoutePolicies[i].Name)
 	}
 
 	return c.JSON(fiber.Map{

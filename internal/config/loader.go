@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
+
 	apperrors "github.com/nerdneilsfield/tiny-auth/internal/errors"
 )
 

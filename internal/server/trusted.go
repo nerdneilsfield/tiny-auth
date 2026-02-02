@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/nerdneilsfield/tiny-auth/internal/config"
 )
 
@@ -17,10 +18,10 @@ func parseTrustedProxies(proxies []string) []*net.IPNet {
 		if !strings.Contains(proxy, "/") {
 			if strings.Contains(proxy, ":") {
 				// IPv6
-				proxy = proxy + "/128"
+				proxy += "/128"
 			} else {
 				// IPv4
-				proxy = proxy + "/32"
+				proxy += "/32"
 			}
 		}
 

@@ -1,20 +1,27 @@
 package server
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"go.uber.org/zap"
+
 	"github.com/nerdneilsfield/tiny-auth/internal/auth"
 	"github.com/nerdneilsfield/tiny-auth/internal/config"
-	"go.uber.org/zap"
 )
 
 // createTestServer 创建测试用的 Server 实例
-func createTestServer(cfg *config.Config) *Server {
+func createTestServer(t *testing.T, cfg *config.Config) *Server {
+	t.Helper()
 	store := auth.BuildStore(cfg)
 	logger, _ := zap.NewDevelopment()
-	return NewServer(cfg, store, logger)
+	srv, err := NewServer(cfg, store, logger)
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	return srv
 }
 
 // TestHandleAuth_Anonymous 测试匿名访问
@@ -40,11 +47,11 @@ func TestHandleAuth_Anonymous(t *testing.T) {
 		},
 	}
 
-	srv := createTestServer(cfg)
+	srv := createTestServer(t, cfg)
 	app := srv.App
 
 	// 模拟请求
-	req := httptest.NewRequest("GET", "/auth", nil)
+	req := httptest.NewRequest("GET", "/auth", http.NoBody)
 	req.Header.Set("X-Forwarded-Host", "api.example.com")
 	req.Header.Set("X-Forwarded-Uri", "/public/data")
 	req.Header.Set("X-Forwarded-Method", "GET")
@@ -87,7 +94,7 @@ func TestHandleAuth_BasicAuth(t *testing.T) {
 		},
 	}
 
-	srv := createTestServer(cfg)
+	srv := createTestServer(t, cfg)
 	app := srv.App
 
 	tests := []struct {
@@ -119,7 +126,7 @@ func TestHandleAuth_BasicAuth(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("GET", "/auth", nil)
+			req := httptest.NewRequest("GET", "/auth", http.NoBody)
 			if tt.authHeader != "" {
 				req.Header.Set("Authorization", tt.authHeader)
 			}
@@ -161,7 +168,7 @@ func TestHandleAuth_BearerToken(t *testing.T) {
 		},
 	}
 
-	srv := createTestServer(cfg)
+	srv := createTestServer(t, cfg)
 	app := srv.App
 
 	tests := []struct {
@@ -191,7 +198,7 @@ func TestHandleAuth_BearerToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("GET", "/auth", nil)
+			req := httptest.NewRequest("GET", "/auth", http.NoBody)
 			req.Header.Set("Authorization", tt.authHeader)
 			req.Header.Set("X-Forwarded-Host", "api.example.com")
 			req.Header.Set("X-Forwarded-Uri", "/api/data")
@@ -237,7 +244,7 @@ func TestHandleAuth_APIKey(t *testing.T) {
 		},
 	}
 
-	srv := createTestServer(cfg)
+	srv := createTestServer(t, cfg)
 	app := srv.App
 
 	tests := []struct {
@@ -270,7 +277,7 @@ func TestHandleAuth_APIKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("GET", "/auth", nil)
+			req := httptest.NewRequest("GET", "/auth", http.NoBody)
 			if tt.authHeader != "" {
 				req.Header.Set("Authorization", tt.authHeader)
 			}
@@ -329,7 +336,7 @@ func TestHandleAuth_PolicyCheck(t *testing.T) {
 		},
 	}
 
-	srv := createTestServer(cfg)
+	srv := createTestServer(t, cfg)
 	app := srv.App
 
 	tests := []struct {
@@ -360,7 +367,7 @@ func TestHandleAuth_PolicyCheck(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("GET", "/auth", nil)
+			req := httptest.NewRequest("GET", "/auth", http.NoBody)
 			req.Header.Set("Authorization", tt.authHeader)
 			req.Header.Set("X-Forwarded-Host", "api.example.com")
 			req.Header.Set("X-Forwarded-Uri", tt.path)
@@ -399,11 +406,11 @@ func TestHandleAuth_TrustedProxy(t *testing.T) {
 		},
 	}
 
-	srv := createTestServer(cfg)
+	srv := createTestServer(t, cfg)
 	app := srv.App
 
 	// 测试：来自可信代理的请求
-	req := httptest.NewRequest("GET", "/auth", nil)
+	req := httptest.NewRequest("GET", "/auth", http.NoBody)
 	req.Header.Set("Authorization", "Basic dXNlcjE6cGFzczE=")
 	req.Header.Set("X-Forwarded-Host", "api.example.com")
 	req.Header.Set("X-Forwarded-Uri", "/api/data")
@@ -452,10 +459,10 @@ func TestHandleAuth_HeaderInjection(t *testing.T) {
 		},
 	}
 
-	srv := createTestServer(cfg)
+	srv := createTestServer(t, cfg)
 	app := srv.App
 
-	req := httptest.NewRequest("GET", "/auth", nil)
+	req := httptest.NewRequest("GET", "/auth", http.NoBody)
 	req.Header.Set("Authorization", "Basic dXNlcjE6cGFzczE=")
 	req.Header.Set("X-Forwarded-Host", "api.example.com")
 	req.Header.Set("X-Forwarded-Uri", "/api/data")

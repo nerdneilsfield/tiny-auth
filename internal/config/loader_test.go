@@ -148,7 +148,7 @@ func TestLoadConfig_DefaultPath(t *testing.T) {
 	}
 
 	// Should look for config.toml
-	if err != nil && !os.IsNotExist(err) {
+	if !os.IsNotExist(err) {
 		// Error should mention config.toml or be a not found error
 		t.Logf("Expected error for default config.toml: %v", err)
 	}

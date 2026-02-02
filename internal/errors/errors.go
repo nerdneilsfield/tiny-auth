@@ -10,20 +10,20 @@ type ErrorCode string
 
 const (
 	// Configuration errors
-	ErrCodeConfigNotFound      ErrorCode = "CONFIG_NOT_FOUND"
-	ErrCodeConfigInvalid       ErrorCode = "CONFIG_INVALID"
-	ErrCodeConfigValidation    ErrorCode = "CONFIG_VALIDATION"
-	ErrCodeConfigPermission    ErrorCode = "CONFIG_PERMISSION"
-	ErrCodeConfigReload        ErrorCode = "CONFIG_RELOAD"
-	ErrCodeEnvVarNotSet        ErrorCode = "ENV_VAR_NOT_SET"
-	ErrCodeEnvVarResolution    ErrorCode = "ENV_VAR_RESOLUTION"
+	ErrCodeConfigNotFound   ErrorCode = "CONFIG_NOT_FOUND"
+	ErrCodeConfigInvalid    ErrorCode = "CONFIG_INVALID"
+	ErrCodeConfigValidation ErrorCode = "CONFIG_VALIDATION"
+	ErrCodeConfigPermission ErrorCode = "CONFIG_PERMISSION"
+	ErrCodeConfigReload     ErrorCode = "CONFIG_RELOAD"
+	ErrCodeEnvVarNotSet     ErrorCode = "ENV_VAR_NOT_SET"
+	ErrCodeEnvVarResolution ErrorCode = "ENV_VAR_RESOLUTION"
 
 	// Authentication errors
-	ErrCodeAuthFailed          ErrorCode = "AUTH_FAILED"
-	ErrCodeAuthInvalidHeader   ErrorCode = "AUTH_INVALID_HEADER"
-	ErrCodeAuthExpired         ErrorCode = "AUTH_EXPIRED"
-	ErrCodeAuthInvalidToken    ErrorCode = "AUTH_INVALID_TOKEN"
-	ErrCodeAuthInvalidCreds    ErrorCode = "AUTH_INVALID_CREDENTIALS"
+	ErrCodeAuthFailed        ErrorCode = "AUTH_FAILED"
+	ErrCodeAuthInvalidHeader ErrorCode = "AUTH_INVALID_HEADER"
+	ErrCodeAuthExpired       ErrorCode = "AUTH_EXPIRED"
+	ErrCodeAuthInvalidToken  ErrorCode = "AUTH_INVALID_TOKEN"       //nolint:gosec
+	ErrCodeAuthInvalidCreds  ErrorCode = "AUTH_INVALID_CREDENTIALS" //nolint:gosec
 
 	// Authorization errors
 	ErrCodeAuthzInsufficientRoles ErrorCode = "AUTHZ_INSUFFICIENT_ROLES"
@@ -34,7 +34,7 @@ const (
 	ErrCodeRateLimitExceeded ErrorCode = "RATE_LIMIT_EXCEEDED"
 
 	// Server errors
-	ErrCodeServerStartup ErrorCode = "SERVER_STARTUP"
+	ErrCodeServerStartup  ErrorCode = "SERVER_STARTUP"
 	ErrCodeServerInternal ErrorCode = "SERVER_INTERNAL"
 )
 
@@ -105,7 +105,7 @@ func ConfigInvalid(err error) *AppError {
 	)
 }
 
-func ConfigValidationError(field string, reason string) *AppError {
+func ConfigValidationError(field, reason string) *AppError {
 	return NewAppError(
 		ErrCodeConfigValidation,
 		"Configuration validation failed",
@@ -113,7 +113,7 @@ func ConfigValidationError(field string, reason string) *AppError {
 	).WithDetail("field", field).WithDetail("reason", reason)
 }
 
-func ConfigPermissionError(path string, mode string) *AppError {
+func ConfigPermissionError(path, mode string) *AppError {
 	return NewAppError(
 		ErrCodeConfigPermission,
 		"Configuration file has insecure permissions",
@@ -165,7 +165,7 @@ func AuthInvalidToken(reason string) *AppError {
 
 // Authorization error constructors
 
-func AuthzInsufficientRoles(required []string, actual []string) *AppError {
+func AuthzInsufficientRoles(required, actual []string) *AppError {
 	return NewAppError(
 		ErrCodeAuthzInsufficientRoles,
 		"Insufficient roles for access",

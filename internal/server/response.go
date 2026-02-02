@@ -6,33 +6,60 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/nerdneilsfield/tiny-auth/internal/auth"
 	"github.com/nerdneilsfield/tiny-auth/internal/config"
 )
 
 // SuccessResponse 返回认证成功响应
 func SuccessResponse(c *fiber.Ctx, cfg *config.Config, result *auth.AuthResult, policy *config.RoutePolicy) error {
-	// 设置认证方法 header
-	if cfg.Headers.MethodHeader != "" {
-		// 虽然 method 是系统生成的，但为了一致性也进行清理
-		c.Set(cfg.Headers.MethodHeader, sanitizeHeaderValue(result.Method))
+	setMethodHeader(c, cfg, result)
+	setUserHeader(c, cfg, result)
+	setRoleHeader(c, cfg, result)
+	setExtraHeaders(c, cfg)
+	setJWTMetadataHeaders(c, cfg, result)
+	setInjectedAuthorization(c, policy)
+
+	// 返回 200 OK
+	c.Status(fiber.StatusOK)
+	return c.SendString("ok")
+}
+
+func setMethodHeader(c *fiber.Ctx, cfg *config.Config, result *auth.AuthResult) {
+	if cfg.Headers.MethodHeader == "" {
+		return
 	}
 
-	// 设置用户 header
-	if cfg.Headers.UserHeader != "" && result.User != "" {
+	// 虽然 method 是系统生成的，但为了一致性也进行清理
+	c.Set(cfg.Headers.MethodHeader, sanitizeHeaderValue(result.Method))
+}
+
+func setUserHeader(c *fiber.Ctx, cfg *config.Config, result *auth.AuthResult) {
+	if cfg.Headers.UserHeader == "" {
+		return
+	}
+
+	if result.User != "" {
 		c.Set(cfg.Headers.UserHeader, sanitizeHeaderValue(result.User))
-	} else if cfg.Headers.UserHeader != "" && result.Name != "" {
+		return
+	}
+
+	if result.Name != "" {
 		// 如果没有用户名，使用配置名称
 		c.Set(cfg.Headers.UserHeader, sanitizeHeaderValue(result.Name))
 	}
+}
 
-	// 设置角色 header
-	if cfg.Headers.RoleHeader != "" && len(result.Roles) > 0 {
-		roles := strings.Join(result.Roles, ",")
-		c.Set(cfg.Headers.RoleHeader, sanitizeHeaderValue(roles))
+func setRoleHeader(c *fiber.Ctx, cfg *config.Config, result *auth.AuthResult) {
+	if cfg.Headers.RoleHeader == "" || len(result.Roles) == 0 {
+		return
 	}
 
-	// 设置额外的 headers
+	roles := strings.Join(result.Roles, ",")
+	c.Set(cfg.Headers.RoleHeader, sanitizeHeaderValue(roles))
+}
+
+func setExtraHeaders(c *fiber.Ctx, cfg *config.Config) {
 	for _, h := range cfg.Headers.ExtraHeaders {
 		switch h {
 		case "X-Auth-Timestamp":
@@ -43,26 +70,28 @@ func SuccessResponse(c *fiber.Ctx, cfg *config.Config, result *auth.AuthResult, 
 			c.Set(h, sanitizeHeaderValue(host+uri))
 		}
 	}
+}
 
-	// 设置 JWT 元数据 headers（如果启用）
-	if cfg.Headers.IncludeJWTMetadata && result.Metadata != nil {
-		for k, v := range result.Metadata {
-			// 首字母大写
-			headerName := "X-Auth-" + strings.ToUpper(k[:1]) + k[1:]
-			c.Set(headerName, sanitizeHeaderValue(v))
-		}
+func setJWTMetadataHeaders(c *fiber.Ctx, cfg *config.Config, result *auth.AuthResult) {
+	if !cfg.Headers.IncludeJWTMetadata || result.Metadata == nil {
+		return
 	}
 
-	// 注入 Authorization header（如果策略指定）
-	if policy != nil && policy.InjectAuthorization != "" {
-		// 清理并限制长度，防止超长 header 导致 HTTP 431
-		sanitized := sanitizeHeaderValue(policy.InjectAuthorization)
-		c.Set("Authorization", sanitized)
+	for k, v := range result.Metadata {
+		// 首字母大写
+		headerName := "X-Auth-" + strings.ToUpper(k[:1]) + k[1:]
+		c.Set(headerName, sanitizeHeaderValue(v))
+	}
+}
+
+func setInjectedAuthorization(c *fiber.Ctx, policy *config.RoutePolicy) {
+	if policy == nil || policy.InjectAuthorization == "" {
+		return
 	}
 
-	// 返回 200 OK
-	c.Status(fiber.StatusOK)
-	return c.SendString("ok")
+	// 清理并限制长度，防止超长 header 导致 HTTP 431
+	sanitized := sanitizeHeaderValue(policy.InjectAuthorization)
+	c.Set("Authorization", sanitized)
 }
 
 // UnauthorizedResponse 返回认证失败响应

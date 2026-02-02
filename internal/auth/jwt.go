@@ -5,10 +5,13 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
+
 	"github.com/nerdneilsfield/tiny-auth/internal/config"
 )
 
 // TryJWT 尝试 JWT 认证
+//
+//nolint:gocognit,gocyclo // JWT validation needs multiple checks
 func TryJWT(tokenString string, jwtCfg *config.JWTConfig) *AuthResult {
 	if jwtCfg.Secret == "" {
 		return nil // JWT 未配置
@@ -35,7 +38,8 @@ func TryJWT(tokenString string, jwtCfg *config.JWTConfig) *AuthResult {
 
 	// 验证 issuer（如果配置了）
 	if jwtCfg.Issuer != "" {
-		if iss, _ := claims["iss"].(string); iss != jwtCfg.Issuer {
+		iss, ok := claims["iss"].(string)
+		if !ok || iss != jwtCfg.Issuer {
 			return nil
 		}
 	}
@@ -43,12 +47,11 @@ func TryJWT(tokenString string, jwtCfg *config.JWTConfig) *AuthResult {
 	// 验证 audience（如果配置了）
 	if jwtCfg.Audience != "" {
 		audMatched := false
-		if aud, ok := claims["aud"].(string); ok {
-			// aud 是字符串
+		switch aud := claims["aud"].(type) {
+		case string:
 			audMatched = (aud == jwtCfg.Audience)
-		} else if audArray, ok := claims["aud"].([]interface{}); ok {
-			// aud 是数组
-			for _, a := range audArray {
+		case []interface{}:
+			for _, a := range aud {
 				if audStr, ok := a.(string); ok && audStr == jwtCfg.Audience {
 					audMatched = true
 					break
@@ -62,25 +65,25 @@ func TryJWT(tokenString string, jwtCfg *config.JWTConfig) *AuthResult {
 
 	// 提取用户信息（支持自定义 claim 名称）
 	var user string
-	
+
 	// 优先使用配置的 user claim 名称
 	userClaimName := jwtCfg.UserClaimName
 	if userClaimName == "" {
 		userClaimName = "sub" // 默认使用 sub claim
 	}
-	
+
 	// 从指定的 claim 提取用户标识
 	if userValue, ok := claims[userClaimName].(string); ok && userValue != "" {
 		user = userValue
 	}
-	
+
 	// 如果未找到用户标识，尝试回退到 sub（仅当配置的不是 sub 时）
 	if user == "" && userClaimName != "sub" {
 		if subValue, ok := claims["sub"].(string); ok && subValue != "" {
 			user = subValue
 		}
 	}
-	
+
 	// 如果仍然没有用户标识，认证失败
 	if user == "" {
 		return nil

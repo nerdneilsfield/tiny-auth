@@ -25,7 +25,8 @@ func validatePolicyDependencies(cfg *Config) error {
 	}
 
 	// 检查每个策略引用的名称是否存在
-	for _, policy := range cfg.RoutePolicies {
+	for i := range cfg.RoutePolicies {
+		policy := cfg.RoutePolicies[i]
 		// 检查 allowed_basic_names
 		for _, name := range policy.AllowedBasicNames {
 			if !availableNames[name] {
@@ -53,6 +54,8 @@ func validatePolicyDependencies(cfg *Config) error {
 
 // validatePolicyConflicts 验证策略冲突
 // 检查是否有多个策略匹配相同的路由（host + path + method）
+//
+//nolint:gocognit // validation is intentionally explicit
 func validatePolicyConflicts(policies []RoutePolicy) error {
 	if len(policies) == 0 {
 		return nil
@@ -67,7 +70,8 @@ func validatePolicyConflicts(policies []RoutePolicy) error {
 
 	conflicts := make(map[policyKey][]string)
 
-	for _, policy := range policies {
+	for i := range policies {
+		policy := policies[i]
 		// 为每个匹配模式创建键
 		hosts := []string{policy.Host}
 		if policy.Host == "" {
@@ -178,7 +182,7 @@ func validateJWTSecretStrength(jwt *JWTConfig) error {
 // calculateEntropy 计算字符串的香农熵（Shannon entropy）
 // 返回每个字符的平均信息量（bits per character）
 func calculateEntropy(s string) float64 {
-	if len(s) == 0 {
+	if s == "" {
 		return 0.0
 	}
 
@@ -204,8 +208,10 @@ func calculateEntropy(s string) float64 {
 
 // calculateSecretComplexity 计算密钥复杂度评分（0-100）
 // 综合考虑长度、字符种类、熵值等因素
+//
+//nolint:gocyclo // scoring logic is intentionally explicit
 func calculateSecretComplexity(secret string) int {
-	if len(secret) == 0 {
+	if secret == "" {
 		return 0
 	}
 

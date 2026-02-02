@@ -71,10 +71,8 @@ func TestTryAPIKeyAuth(t *testing.T) {
 				if result.Name != tt.wantName {
 					t.Errorf("Name = %q, want %q", result.Name, tt.wantName)
 				}
-			} else {
-				if result != nil {
-					t.Errorf("expected nil but got %+v", result)
-				}
+			} else if result != nil {
+				t.Errorf("expected nil but got %+v", result)
 			}
 		})
 	}
@@ -129,10 +127,8 @@ func TestTryAPIKeyHeader(t *testing.T) {
 				if result.Name != tt.wantName {
 					t.Errorf("Name = %q, want %q", result.Name, tt.wantName)
 				}
-			} else {
-				if result != nil {
-					t.Errorf("expected nil but got %+v", result)
-				}
+			} else if result != nil {
+				t.Errorf("expected nil but got %+v", result)
 			}
 		})
 	}

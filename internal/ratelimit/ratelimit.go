@@ -23,18 +23,26 @@ type Limiter struct {
 
 // record 记录单个 IP 的请求历史
 type record struct {
-	attempts  []time.Time // 请求时间戳列表
-	bannedUntil time.Time // 封禁截止时间
+	attempts    []time.Time // 请求时间戳列表
+	bannedUntil time.Time   // 封禁截止时间
 }
 
 // NewLimiter 创建新的速率限制器
 func NewLimiter(maxAttempts int, window, banDuration time.Duration) *Limiter {
+	return newLimiter(maxAttempts, window, banDuration, time.Minute*5)
+}
+
+func newLimiter(maxAttempts int, window, banDuration, cleanupInterval time.Duration) *Limiter {
+	if cleanupInterval <= 0 {
+		cleanupInterval = time.Minute * 5
+	}
+
 	l := &Limiter{
 		records:         make(map[string]*record),
 		maxAttempts:     maxAttempts,
 		window:          window,
 		banDuration:     banDuration,
-		cleanupInterval: time.Minute * 5, // 每 5 分钟清理一次过期记录
+		cleanupInterval: cleanupInterval,
 		stopCleanup:     make(chan struct{}),
 	}
 

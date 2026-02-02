@@ -28,8 +28,8 @@ func TestValidatePolicyDependencies(t *testing.T) {
 						AllowedBasicNames: []string{"admin"},
 					},
 					{
-						Name:                "policy2",
-						AllowedBearerNames:  []string{"api-token"},
+						Name:               "policy2",
+						AllowedBearerNames: []string{"api-token"},
 					},
 				},
 			},
@@ -75,8 +75,8 @@ func TestValidatePolicyDependencies(t *testing.T) {
 				},
 				RoutePolicies: []RoutePolicy{
 					{
-						Name:                "policy1",
-						AllowedAPIKeyNames:  []string{"key-missing"},
+						Name:               "policy1",
+						AllowedAPIKeyNames: []string{"key-missing"},
 					},
 				},
 			},
@@ -144,9 +144,9 @@ func TestValidatePolicyConflicts(t *testing.T) {
 			hasWarn: true, // 应该有警告
 		},
 		{
-			name: "Empty policies",
+			name:     "Empty policies",
 			policies: []RoutePolicy{},
-			hasWarn: false,
+			hasWarn:  false,
 		},
 	}
 
@@ -223,10 +223,10 @@ func TestValidateJWTSecretStrength(t *testing.T) {
 // TestCalculateEntropy 测试熵值计算
 func TestCalculateEntropy(t *testing.T) {
 	tests := []struct {
-		name          string
-		input         string
-		minEntropy    float64 // 最小期望熵值
-		maxEntropy    float64 // 最大期望熵值
+		name       string
+		input      string
+		minEntropy float64 // 最小期望熵值
+		maxEntropy float64 // 最大期望熵值
 	}{
 		{
 			name:       "Empty string",

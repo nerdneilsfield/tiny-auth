@@ -6,8 +6,9 @@ import (
 	"syscall"
 
 	loggerPkg "github.com/nerdneilsfield/shlogin/pkg/logger"
-	"github.com/nerdneilsfield/tiny-auth/cmd"
 	"go.uber.org/zap"
+
+	"github.com/nerdneilsfield/tiny-auth/cmd"
 )
 
 var (

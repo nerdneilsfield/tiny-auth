@@ -3,11 +3,13 @@ package server
 import (
 	"encoding/json"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/nerdneilsfield/tiny-auth/internal/auth"
 	"github.com/nerdneilsfield/tiny-auth/internal/config"
 )
@@ -35,7 +37,7 @@ func TestSuccessResponse(t *testing.T) {
 		return SuccessResponse(c, cfg, result, nil)
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest("GET", "/test", http.NoBody)
 	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("Failed to test request: %v", err)
@@ -90,7 +92,7 @@ func TestSuccessResponse_WithPolicy(t *testing.T) {
 		return SuccessResponse(c, cfg, result, policy)
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest("GET", "/test", http.NoBody)
 	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("Failed to test request: %v", err)
@@ -126,7 +128,7 @@ func TestSuccessResponse_WithMetadata(t *testing.T) {
 		return SuccessResponse(c, cfg, result, nil)
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest("GET", "/test", http.NoBody)
 	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("Failed to test request: %v", err)
@@ -165,7 +167,7 @@ func TestSuccessResponse_ExtraHeaders(t *testing.T) {
 		return SuccessResponse(c, cfg, result, nil)
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest("GET", "/test", http.NoBody)
 	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("Failed to test request: %v", err)
@@ -198,7 +200,7 @@ func TestUnauthorizedResponse(t *testing.T) {
 		return UnauthorizedResponse(c, cfg, "Invalid credentials")
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest("GET", "/test", http.NoBody)
 	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("Failed to test request: %v", err)
@@ -214,10 +216,10 @@ func TestUnauthorizedResponse(t *testing.T) {
 	// depending on the HTTP/1.1 spec and implementation
 	authHeader := resp.Header.Get("Www-Authenticate")
 	authHeaders := resp.Header["Www-Authenticate"]
-	
+
 	// 合并所有 WWW-Authenticate headers
 	allAuthMethods := strings.Join(authHeaders, ", ")
-	
+
 	// 验证至少包含 Basic 和 Bearer
 	if !strings.Contains(allAuthMethods, "Basic") {
 		t.Errorf("Expected WWW-Authenticate to include Basic, got: %s", allAuthMethods)
@@ -225,7 +227,7 @@ func TestUnauthorizedResponse(t *testing.T) {
 	if !strings.Contains(allAuthMethods, "Bearer") {
 		t.Errorf("Expected WWW-Authenticate to include Bearer, got: %s", allAuthMethods)
 	}
-	
+
 	// Debug output (optional)
 	if len(authHeaders) > 0 {
 		t.Logf("WWW-Authenticate headers: %v (combined: %s)", authHeaders, allAuthMethods)

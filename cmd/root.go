@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -22,7 +23,7 @@ func init() {
 	}
 }
 
-func newRootCmd(version string, buildTime string, gitCommit string) *cobra.Command {
+func newRootCmd(version, buildTime, gitCommit string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tiny-auth",
 		Short: "tiny-auth - A lightweight authentication service for Traefik ForwardAuth",
@@ -54,9 +55,11 @@ It supports multiple authentication methods (Basic Auth, Bearer Token, API Key, 
 	return cmd
 }
 
-func Execute(version string, buildTime string, gitCommit string) error {
+func Execute(version, buildTime, gitCommit string) error {
 	defer func() {
-		_ = logger.Sync()
+		if err := logger.Sync(); err != nil {
+			fmt.Fprintf(os.Stderr, "logger sync failed: %v\n", err)
+		}
 	}()
 
 	if err := newRootCmd(version, buildTime, gitCommit).Execute(); err != nil {

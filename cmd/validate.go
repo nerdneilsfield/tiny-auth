@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/nerdneilsfield/tiny-auth/internal/config"
-	apperrors "github.com/nerdneilsfield/tiny-auth/internal/errors"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+
+	"github.com/nerdneilsfield/tiny-auth/internal/config"
+	apperrors "github.com/nerdneilsfield/tiny-auth/internal/errors"
 )
 
 func newValidateCmd() *cobra.Command {
@@ -112,7 +113,8 @@ func printConfigSummary(cfg *config.Config) {
 	// 路由策略
 	if len(cfg.RoutePolicies) > 0 {
 		fmt.Printf("✓ Route Policies: %d policies configured\n", len(cfg.RoutePolicies))
-		for _, p := range cfg.RoutePolicies {
+		for i := range cfg.RoutePolicies {
+			p := cfg.RoutePolicies[i]
 			fmt.Printf("  - %s", p.Name)
 			if p.Host != "" {
 				fmt.Printf(" (host=%s", p.Host)

@@ -24,7 +24,7 @@ func TestServerReload_RateLimiter(t *testing.T) {
 		},
 	}
 
-	srv := createTestServer(baseCfg)
+	srv := createTestServer(t, baseCfg)
 	if srv.RateLimiter != nil {
 		t.Fatal("expected rate limiter to be nil when disabled")
 	}

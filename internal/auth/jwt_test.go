@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
 	"github.com/nerdneilsfield/tiny-auth/internal/config"
 )
 
@@ -57,6 +58,7 @@ func TestIsJWT(t *testing.T) {
 	}
 }
 
+//nolint:gocognit // table-driven test
 func TestTryJWT(t *testing.T) {
 	secret := "test_secret_key_at_least_32_chars_long_12345"
 
@@ -237,10 +239,8 @@ func TestTryJWT(t *testing.T) {
 						t.Errorf("Roles[%d] = %q, want %q", i, result.Roles[i], role)
 					}
 				}
-			} else {
-				if result != nil {
-					t.Errorf("expected nil but got %+v", result)
-				}
+			} else if result != nil {
+				t.Errorf("expected nil but got %+v", result)
 			}
 		})
 	}
@@ -422,10 +422,8 @@ func TestTryJWT_CustomUserClaim(t *testing.T) {
 				if result.Method != "jwt" {
 					t.Errorf("Expected method jwt, got %s", result.Method)
 				}
-			} else {
-				if result != nil {
-					t.Errorf("Expected authentication failure, got result: %+v", result)
-				}
+			} else if result != nil {
+				t.Errorf("Expected authentication failure, got result: %+v", result)
 			}
 		})
 	}

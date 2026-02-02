@@ -206,7 +206,7 @@ func TestGetStats(t *testing.T) {
 	limiter.Allow(ip)
 	limiter.Allow(ip)
 
-	attempts, isBanned, retryAfter = limiter.GetStats(ip)
+	_, isBanned, retryAfter = limiter.GetStats(ip)
 	if !isBanned {
 		t.Error("Should be banned")
 	}
@@ -218,8 +218,7 @@ func TestGetStats(t *testing.T) {
 // TestCleanup 测试清理功能
 func TestCleanup(t *testing.T) {
 	// 使用短窗口和清理间隔
-	limiter := NewLimiter(5, time.Millisecond*50, time.Millisecond*50)
-	limiter.cleanupInterval = time.Millisecond * 100 // 快速清理
+	limiter := newLimiter(5, time.Millisecond*50, time.Millisecond*50, time.Millisecond*100)
 	defer limiter.Stop()
 
 	// 添加一些记录

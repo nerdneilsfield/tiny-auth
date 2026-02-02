@@ -77,7 +77,7 @@ func TestAppError_Is(t *testing.T) {
 // TestAppError_WithDetail 测试 WithDetail 方法
 func TestAppError_WithDetail(t *testing.T) {
 	err := NewAppError(ErrCodeAuthFailed, "Failed", nil)
-	
+
 	err.WithDetail("user", "admin").WithDetail("ip", "192.168.1.1")
 
 	if len(err.Details) != 2 {

@@ -4,10 +4,12 @@ import (
 	"encoding/base64"
 	"testing"
 
-	"github.com/nerdneilsfield/tiny-auth/internal/config"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/nerdneilsfield/tiny-auth/internal/config"
 )
 
+//nolint:gocognit // table-driven test
 func TestTryBasic(t *testing.T) {
 	// 准备测试数据
 	store := &AuthStore{
@@ -28,13 +30,13 @@ func TestTryBasic(t *testing.T) {
 	}
 
 	tests := []struct {
-		name         string
-		authHeader   string
-		wantSuccess  bool
-		wantUser     string
-		wantName     string
-		wantRoles    []string
-		wantMethod   string
+		name        string
+		authHeader  string
+		wantSuccess bool
+		wantUser    string
+		wantName    string
+		wantRoles   []string
+		wantMethod  string
 	}{
 		{
 			name:        "有效的 Basic Auth (admin)",
@@ -116,10 +118,8 @@ func TestTryBasic(t *testing.T) {
 						t.Errorf("Roles[%d] = %q, want %q", i, result.Roles[i], role)
 					}
 				}
-			} else {
-				if result != nil {
-					t.Errorf("expected nil but got result: %+v", result)
-				}
+			} else if result != nil {
+				t.Errorf("expected nil but got result: %+v", result)
 			}
 		})
 	}
@@ -139,8 +139,6 @@ func TestBasicAuth_ConstantTimeComparison(t *testing.T) {
 		},
 	}
 
-	// 测试多个不同长度的错误密码
-	// 常量时间比较应该对所有错误密码花费相同时间
 	wrongPasswords := []string{
 		"a",                              // 短密码
 		"wrongpass",                      // 中等密码
@@ -204,6 +202,8 @@ func BenchmarkTryBasic_Failure(b *testing.B) {
 }
 
 // TestTryBasic_Bcrypt 测试 bcrypt 哈希密码
+//
+//nolint:gocognit // table-driven test
 func TestTryBasic_Bcrypt(t *testing.T) {
 	// 生成 bcrypt 哈希 (cost 为 10)
 	hash1, _ := bcrypt.GenerateFromPassword([]byte("bcryptpass123"), 10)
@@ -341,8 +341,8 @@ func TestTryBasic_BcryptPriority(t *testing.T) {
 			"user": {
 				Name:     "test-user",
 				User:     "user",
-				Pass:     "wrongpassword",   // 错误的明文密码
-				PassHash: string(hash),      // 正确的哈希密码
+				Pass:     "wrongpassword", // 错误的明文密码
+				PassHash: string(hash),    // 正确的哈希密码
 				Roles:    []string{"user"},
 			},
 		},

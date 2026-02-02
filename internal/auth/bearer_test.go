@@ -6,6 +6,7 @@ import (
 	"github.com/nerdneilsfield/tiny-auth/internal/config"
 )
 
+//nolint:gocognit // table-driven test
 func TestTryBearer(t *testing.T) {
 	store := &AuthStore{
 		BearerByToken: map[string]config.BearerConfig{
@@ -82,10 +83,8 @@ func TestTryBearer(t *testing.T) {
 				if len(result.Roles) != len(tt.wantRoles) {
 					t.Errorf("Roles = %v, want %v", result.Roles, tt.wantRoles)
 				}
-			} else {
-				if result != nil {
-					t.Errorf("expected nil but got %+v", result)
-				}
+			} else if result != nil {
+				t.Errorf("expected nil but got %+v", result)
 			}
 		})
 	}

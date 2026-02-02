@@ -3,6 +3,8 @@ package auth
 import "github.com/nerdneilsfield/tiny-auth/internal/config"
 
 // AuthResult 认证结果
+//
+//nolint:revive // exported name is stable API surface
 type AuthResult struct {
 	Method   string            // 认证方法: "basic", "bearer", "apikey", "jwt", "anonymous"
 	Name     string            // 配置名称（如 "admin-user"）
@@ -12,6 +14,8 @@ type AuthResult struct {
 }
 
 // AuthStore 认证存储，用于快速查找
+//
+//nolint:revive // exported name is stable API surface
 type AuthStore struct {
 	// 按凭证查找（用于认证）
 	BasicByUser   map[string]config.BasicAuthConfig
