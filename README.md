@@ -527,23 +527,65 @@ curl http://localhost:8080/debug/config
 
 ### ✅ Must Do
 
-1. **Config File Permissions**
+1. **⚠️ Configure Trusted Proxies (CRITICAL!)**
+   
+   **Why**: Prevents attackers from spoofing `X-Forwarded-*` headers to bypass policies.
+   
+   ```toml
+   [server]
+   # ✅ PRODUCTION: Only trust your reverse proxy
+   trusted_proxies = ["172.16.0.0/12"]  # Docker network
+   
+   # ❌ INSECURE: Empty list accepts headers from ANY source
+   # trusted_proxies = []
+   ```
+   
+   **Examples**:
+   - Docker Compose: `["172.16.0.0/12"]`
+   - Kubernetes: `["10.0.0.0/8"]`
+   - Specific IP: `["192.168.1.100"]`
+   - Multiple: `["172.16.0.0/12", "192.168.1.0/24"]`
+   
+   **Without it**:
+   ```bash
+   # Attacker can fake host to bypass policies
+   curl -H "X-Forwarded-Host: admin.internal.com" \
+        http://your-tiny-auth:8080/auth
+   # Without trusted_proxies: ✅ Allowed (bypass!)
+   # With trusted_proxies:    ❌ Denied (headers ignored)
+   ```
+
+2. **Config File Permissions**
    ```bash
    chmod 0600 config.toml  # Owner read/write only
    ```
 
-2. **Use Environment Variables for Secrets**
+3. **Use Environment Variables for Secrets**
    ```toml
    pass = "env:ADMIN_PASSWORD"  # ✅
    pass = "plaintext123"        # ❌
    ```
 
-3. **Strong Password Policy**
+4. **Strong Password Policy**
    - At least 12 characters
    - Mix of uppercase, lowercase, numbers, special chars
 
-4. **JWT Secret Length**
+5. **JWT Secret Length**
    - At least 32 characters (256 bits)
+
+6. **Enable JSON Logging for Production**
+   ```toml
+   [logging]
+   format = "json"  # Structured, searchable
+   level = "info"
+   ```
+   
+   **Structured logs include**:
+   - `request_id`: Trace across services
+   - `client_ip`: Real client IP (validated via trusted_proxies)
+   - `auth_method`: Which authentication succeeded
+   - `latency`: Performance monitoring
+   - `reason`: Why authentication failed
 
 ### ⚠️ Warnings
 

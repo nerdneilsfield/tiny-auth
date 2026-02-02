@@ -9,6 +9,29 @@ health_path = "/health"    # 健康检查端点路径
 read_timeout = 5           # 读超时（秒）
 write_timeout = 5          # 写超时（秒）
 
+# ⚠️ SECURITY: Trusted Proxies Configuration
+# 可信代理列表：只接受来自这些 IP/网络的 X-Forwarded-* headers
+# 如果为空，则接受任何来源（生产环境不推荐！）
+# 
+# 示例：
+#   - 单个 IP:    ["192.168.1.100"]
+#   - CIDR 范围:  ["172.16.0.0/12", "10.0.0.0/8"]
+#   - IPv6:       ["::1", "fe80::/10"]
+#   - Docker:     ["172.16.0.0/12"]
+#   - Kubernetes: ["10.0.0.0/8"]
+#
+# 为什么重要：
+# 没有此配置，攻击者可以伪造 X-Forwarded-Host/For 来绕过策略！
+# 
+# 生产环境（Traefik 在 Docker 中）：
+trusted_proxies = ["172.16.0.0/12"]
+
+# 生产环境（Traefik 在特定主机）：
+# trusted_proxies = ["192.168.1.100"]
+
+# 开发环境（接受任何来源 - 不要用于生产！）：
+# trusted_proxies = []
+
 # ===== Header 配置 =====
 [headers]
 user_header = "X-Auth-User"           # 用户名 header

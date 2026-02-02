@@ -2,6 +2,8 @@
 
 [server]
 port = "8080"
+# For development only - production should set trusted_proxies!
+# trusted_proxies = []
 
 [logging]
 format = "text"

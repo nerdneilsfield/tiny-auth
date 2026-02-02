@@ -527,23 +527,65 @@ curl http://localhost:8080/debug/config
 
 ### ✅ 必须做的
 
-1. **配置文件权限**
+1. **⚠️ 配置可信代理（非常重要！）**
+   
+   **为什么**：防止攻击者伪造 `X-Forwarded-*` headers 绕过策略。
+   
+   ```toml
+   [server]
+   # ✅ 生产环境：只信任你的反向代理
+   trusted_proxies = ["172.16.0.0/12"]  # Docker 网络
+   
+   # ❌ 不安全：空列表接受任何来源的 headers
+   # trusted_proxies = []
+   ```
+   
+   **示例配置**：
+   - Docker Compose: `["172.16.0.0/12"]`
+   - Kubernetes: `["10.0.0.0/8"]`
+   - 特定 IP: `["192.168.1.100"]`
+   - 多个网段: `["172.16.0.0/12", "192.168.1.0/24"]`
+   
+   **不配置会怎样**：
+   ```bash
+   # 攻击者可以伪造 host 绕过策略
+   curl -H "X-Forwarded-Host: admin.internal.com" \
+        http://your-tiny-auth:8080/auth
+   # 没有 trusted_proxies: ✅ 允许通过（策略被绕过！）
+   # 配置了 trusted_proxies:  ❌ 拒绝访问（headers 被忽略）
+   ```
+
+2. **配置文件权限**
    ```bash
    chmod 0600 config.toml  # 只有所有者可读写
    ```
 
-2. **使用环境变量存储敏感信息**
+3. **使用环境变量存储敏感信息**
    ```toml
    pass = "env:ADMIN_PASSWORD"  # ✅
    pass = "plaintext123"        # ❌
    ```
 
-3. **强密码策略**
+4. **强密码策略**
    - 至少 12 个字符
    - 包含大小写字母、数字、特殊字符
 
-4. **JWT 密钥长度**
+5. **JWT 密钥长度**
    - 至少 32 字符（256 bits）
+
+6. **生产环境启用 JSON 日志**
+   ```toml
+   [logging]
+   format = "json"  # 结构化，可搜索
+   level = "info"
+   ```
+   
+   **结构化日志包含**：
+   - `request_id`：跨服务追踪
+   - `client_ip`：真实客户端 IP（通过 trusted_proxies 验证）
+   - `auth_method`：哪种认证方式成功
+   - `latency`：性能监控
+   - `reason`：认证失败原因
 
 ### ⚠️ 注意事项
 

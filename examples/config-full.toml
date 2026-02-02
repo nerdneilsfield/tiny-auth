@@ -8,6 +8,10 @@ health_path = "/health"
 read_timeout = 10
 write_timeout = 10
 
+# Trusted proxies (for X-Forwarded-* header validation)
+# Docker compose network: 172.16.0.0/12
+trusted_proxies = ["172.16.0.0/12"]
+
 [headers]
 user_header = "X-Auth-User"
 role_header = "X-Auth-Role"

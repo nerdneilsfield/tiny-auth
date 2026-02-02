@@ -7,6 +7,10 @@ health_path = "/health"
 read_timeout = 10
 write_timeout = 10
 
+# 🔒 CRITICAL: Configure trusted proxies for production!
+# Only trust your reverse proxy (Traefik/Nginx)
+trusted_proxies = ["172.16.0.0/12"]  # Docker bridge network
+
 [headers]
 user_header = "X-Auth-User"
 role_header = "X-Auth-Role"

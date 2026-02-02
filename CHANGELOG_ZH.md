@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial implementation of tiny-auth
+- **安全功能**: 可信代理配置，防止 X-Forwarded-* header 伪造
+  - 通过 `server.trusted_proxies` 配置 IP/CIDR 列表
+  - 仅接受来自可信来源的 X-Forwarded-Host/For/Method
+  - 检测到不可信代理时记录警告
+  - 支持 IPv4、IPv6、单个 IP 和 CIDR 范围
 - Multiple authentication methods support:
   - Basic Auth with constant-time password comparison
   - Bearer Token (static tokens)
@@ -55,11 +60,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Traefik integration guide
 
 ### Security
-- Constant-time comparison for all credential validation
-- Header value sanitization to prevent injection attacks
-- Configuration file permission validation
-- Weak password warnings
-- No secrets in logs
+- **重大修复**: 修复 jwt_only 策略绕过漏洞（CVE 级别）
+  - jwt_only = true 现在正确拒绝非 JWT 认证
+  - 添加了策略检查的完整测试覆盖
+- **新功能**: 可信代理验证
+  - 防止 X-Forwarded-* header 伪造攻击
+  - 通过 server.trusted_proxies 配置
+  - 默认接受所有（向后兼容，但会在日志中警告）
+- 所有凭证验证使用常量时间比较
+- Header 值清理，防止注入攻击
+- 配置文件权限验证
+- 弱密码警告
+- 日志中不包含敏感信息
+- **改进**: 使用 zap 的结构化审计日志
+  - 生产环境 JSON 格式（可被 ELK/Datadog 解析）
+  - Request ID 用于分布式追踪
+  - 通过 trusted_proxies 验证的真实客户端 IP
+  - 性能指标（延迟追踪）
+  - 安全事件追踪（认证失败及原因）
 
 ## [0.1.0] - TBD
 

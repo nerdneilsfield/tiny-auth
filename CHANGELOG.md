@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial implementation of tiny-auth
+- **Security**: Trusted proxies configuration to prevent X-Forwarded-* header spoofing
+  - Configure `server.trusted_proxies` with IP/CIDR list
+  - Only accepts X-Forwarded-Host/For/Method from trusted sources
+  - Logs warning when untrusted proxy detected
+  - Supports IPv4, IPv6, single IPs, and CIDR ranges
 - Multiple authentication methods support:
   - Basic Auth with constant-time password comparison
   - Bearer Token (static tokens)
@@ -55,11 +60,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Traefik integration guide
 
 ### Security
+- **CRITICAL FIX**: Fixed jwt_only policy bypass vulnerability (CVE-level)
+  - jwt_only = true now correctly rejects non-JWT authentication
+  - Added comprehensive test coverage for policy checks
+- **NEW**: Trusted proxies validation
+  - Prevents X-Forwarded-* header spoofing attacks
+  - Configurable via server.trusted_proxies
+  - Defaults to accepting all (backward compatible, but warns in logs)
 - Constant-time comparison for all credential validation
 - Header value sanitization to prevent injection attacks
 - Configuration file permission validation
 - Weak password warnings
 - No secrets in logs
+- **IMPROVED**: Structured audit logging with zap
+  - JSON format for production (parseable by ELK/Datadog)
+  - Request ID for distributed tracing
+  - Real client IP validation via trusted_proxies
+  - Performance metrics (latency tracking)
+  - Security event tracking (failed auth with reasons)
 
 ## [0.1.0] - TBD
 
