@@ -1,0 +1,85 @@
+# 完整配置示例 - 对应 docker-compose-full.yml
+# 这个版本使用明文密码用于测试，生产环境请使用 config-production.toml
+
+[server]
+port = "8080"
+auth_path = "/auth"
+health_path = "/health"
+read_timeout = 10
+write_timeout = 10
+
+[headers]
+user_header = "X-Auth-User"
+role_header = "X-Auth-Role"
+method_header = "X-Auth-Method"
+extra_headers = ["X-Auth-Timestamp"]
+
+[logging]
+format = "json"
+level = "info"
+
+# ===== Basic Auth 用户 =====
+[[basic_auth]]
+name = "admin"
+user = "admin"
+pass = "admin123456"  # 测试密码（生产环境请使用 env:ADMIN_PASSWORD）
+roles = ["admin", "user"]
+
+[[basic_auth]]
+name = "dev"
+user = "dev"
+pass = "dev123456"
+roles = ["developer"]
+
+# ===== Bearer Token =====
+[[bearer_token]]
+name = "api-token"
+token = "test-api-token-123456789"
+roles = ["api", "service"]
+
+# ===== API Key =====
+[[api_key]]
+name = "internal-key"
+key = "ak_internal_secret_key"
+roles = ["internal"]
+
+# ===== JWT 配置 =====
+[jwt]
+secret = "test-jwt-secret-key-must-be-at-least-32-characters-long"
+issuer = "tiny-auth"
+audience = "api"
+
+# ===== 路由策略 =====
+
+# 公共 API（匿名访问）
+[[route_policy]]
+name = "public"
+host = "public.localhost"
+path_prefix = "/public"
+allow_anonymous = true
+
+# 管理后台（只允许 admin）
+[[route_policy]]
+name = "admin-panel"
+host = "admin.localhost"
+allowed_basic_names = ["admin"]
+require_all_roles = ["admin"]
+
+# 内部服务（API Key）
+[[route_policy]]
+name = "internal"
+host = "internal.localhost"
+allowed_api_key_names = ["internal-key"]
+require_any_role = ["internal"]
+
+# API 服务（Bearer Token 或 JWT）
+[[route_policy]]
+name = "api"
+host = "api.localhost"
+allowed_bearer_names = ["api-token"]
+
+# Basic Auth 保护的服务
+[[route_policy]]
+name = "whoami-basic"
+host = "whoami-basic.localhost"
+# 允许所有已认证用户

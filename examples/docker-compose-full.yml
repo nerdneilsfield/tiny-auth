@@ -1,0 +1,161 @@
+# 完整的 Traefik + tiny-auth + 示例服务配置
+# 包含多个认证场景演示
+
+version: '3.8'
+
+services:
+  # =========================
+  # Traefik 反向代理
+  # =========================
+  traefik:
+    image: traefik:v3.2
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      # API 和 Dashboard
+      - --api.insecure=true
+      - --api.dashboard=true
+      
+      # Providers
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=traefik-network
+      
+      # Entry points
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      
+      # 日志
+      - --log.level=INFO
+      - --accesslog=true
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - traefik-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.localhost`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+
+  # =========================
+  # tiny-auth 认证服务
+  # =========================
+  tiny-auth:
+    image: nerdneils/tiny-auth:latest
+    container_name: tiny-auth
+    restart: unless-stopped
+    volumes:
+      - ./config.toml:/root/config.toml:ro
+    environment:
+      CONFIG_PATH: /root/config.toml
+      # 环境变量示例（可选）
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      DEV_PASSWORD: ${DEV_PASSWORD:-dev123}
+      API_TOKEN: ${API_TOKEN:-test-token-123456}
+      JWT_SECRET: ${JWT_SECRET:-test-secret-key-must-be-at-least-32-characters-long}
+    networks:
+      - traefik-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    labels:
+      - "traefik.enable=true"
+      # 健康检查端点（公开访问）
+      - "traefik.http.routers.auth-health.rule=Host(`auth.localhost`) && Path(`/health`)"
+      - "traefik.http.routers.auth-health.entrypoints=web"
+      - "traefik.http.services.auth-health.loadbalancer.server.port=8080"
+
+  # =========================
+  # 场景 1：需要 Basic Auth 的服务
+  # =========================
+  whoami-basic:
+    image: traefik/whoami
+    container_name: whoami-basic
+    networks:
+      - traefik-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami-basic.rule=Host(`whoami-basic.localhost`)"
+      - "traefik.http.routers.whoami-basic.entrypoints=web"
+      
+      # 配置 ForwardAuth 中间件
+      - "traefik.http.middlewares.auth-basic.forwardauth.address=http://tiny-auth:8080/auth"
+      - "traefik.http.middlewares.auth-basic.forwardauth.authResponseHeaders=X-Auth-User,X-Auth-Role,X-Auth-Method"
+      - "traefik.http.middlewares.auth-basic.forwardauth.trustForwardHeader=false"
+      
+      # 应用中间件
+      - "traefik.http.routers.whoami-basic.middlewares=auth-basic@docker"
+
+  # =========================
+  # 场景 2：需要 Bearer Token 的 API
+  # =========================
+  api-service:
+    image: traefik/whoami
+    container_name: api-service
+    networks:
+      - traefik-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`api.localhost`)"
+      - "traefik.http.routers.api.entrypoints=web"
+      
+      # 使用相同的 ForwardAuth 中间件（支持多种认证方式）
+      - "traefik.http.routers.api.middlewares=auth-basic@docker"
+
+  # =========================
+  # 场景 3：公共服务（匿名访问）
+  # =========================
+  public-service:
+    image: traefik/whoami
+    container_name: public-service
+    networks:
+      - traefik-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.public.rule=Host(`public.localhost`) && PathPrefix(`/public`)"
+      - "traefik.http.routers.public.entrypoints=web"
+      
+      # 公共服务也经过认证服务，但配置允许匿名访问
+      - "traefik.http.routers.public.middlewares=auth-basic@docker"
+
+  # =========================
+  # 场景 4：管理后台（仅 admin 角色）
+  # =========================
+  admin-panel:
+    image: traefik/whoami
+    container_name: admin-panel
+    networks:
+      - traefik-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.admin.rule=Host(`admin.localhost`)"
+      - "traefik.http.routers.admin.entrypoints=web"
+      
+      # 使用相同的认证中间件（由路由策略控制权限）
+      - "traefik.http.routers.admin.middlewares=auth-basic@docker"
+
+  # =========================
+  # 场景 5：内部微服务（API Key）
+  # =========================
+  internal-service:
+    image: traefik/whoami
+    container_name: internal-service
+    networks:
+      - traefik-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.internal.rule=Host(`internal.localhost`)"
+      - "traefik.http.routers.internal.entrypoints=web"
+      - "traefik.http.routers.internal.middlewares=auth-basic@docker"
+
+networks:
+  traefik-network:
+    name: traefik-network
+    driver: bridge

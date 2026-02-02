@@ -1,0 +1,22 @@
+# JWT 专用配置示例
+
+[server]
+port = "8080"
+
+[headers]
+include_jwt_metadata = true  # 包含 JWT 元数据
+
+[logging]
+format = "json"
+level = "info"
+
+# JWT 配置
+[jwt]
+secret = "your-jwt-secret-key-must-be-at-least-32-characters-long"
+issuer = "your-auth-service"
+audience = "your-api"
+
+# 路由策略：仅允许 JWT
+[[route_policy]]
+name = "jwt-only"
+jwt_only = true

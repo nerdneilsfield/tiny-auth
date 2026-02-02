@@ -1,0 +1,101 @@
+# 生产环境配置示例 - 使用环境变量存储敏感信息
+
+[server]
+port = "8080"
+auth_path = "/auth"
+health_path = "/health"
+read_timeout = 10
+write_timeout = 10
+
+[headers]
+user_header = "X-Auth-User"
+role_header = "X-Auth-Role"
+method_header = "X-Auth-Method"
+extra_headers = ["X-Auth-Timestamp"]
+include_jwt_metadata = true
+
+[logging]
+format = "json"  # 生产环境推荐 JSON 格式
+level = "info"
+
+# ===== Basic Auth（使用环境变量）=====
+[[basic_auth]]
+name = "admin"
+user = "admin"
+pass = "env:ADMIN_PASSWORD"  # 从环境变量读取
+roles = ["admin", "user"]
+
+[[basic_auth]]
+name = "operator"
+user = "operator"
+pass = "env:OPERATOR_PASSWORD"
+roles = ["operator"]
+
+# ===== Bearer Token（使用环境变量）=====
+[[bearer_token]]
+name = "production-api"
+token = "env:PRODUCTION_API_TOKEN"
+roles = ["admin", "service"]
+
+[[bearer_token]]
+name = "monitoring"
+token = "env:MONITORING_TOKEN"
+roles = ["readonly", "monitoring"]
+
+# ===== API Key（使用环境变量）=====
+[[api_key]]
+name = "service-a"
+key = "env:SERVICE_A_API_KEY"
+roles = ["internal", "service"]
+
+[[api_key]]
+name = "service-b"
+key = "env:SERVICE_B_API_KEY"
+roles = ["internal", "service"]
+
+# ===== JWT 配置（使用环境变量）=====
+[jwt]
+secret = "env:JWT_SECRET"
+issuer = "production-auth-service"
+audience = "production-api"
+
+# ===== 路由策略 =====
+
+# 健康检查和公共端点（匿名）
+[[route_policy]]
+name = "public-endpoints"
+path_prefix = "/health"
+allow_anonymous = true
+
+[[route_policy]]
+name = "metrics"
+path_prefix = "/metrics"
+allow_anonymous = true
+
+# 管理面板（仅 admin）
+[[route_policy]]
+name = "admin-panel"
+host = "admin.example.com"
+allowed_basic_names = ["admin"]
+require_all_roles = ["admin"]
+
+# 生产 API（Bearer Token 或 JWT）
+[[route_policy]]
+name = "production-api"
+host = "api.example.com"
+allowed_bearer_names = ["production-api"]
+require_any_role = ["admin", "service"]
+
+# 内部微服务通信（API Key）
+[[route_policy]]
+name = "internal-services"
+host = "internal.example.com"
+allowed_api_key_names = ["service-a", "service-b"]
+require_all_roles = ["internal", "service"]
+
+# 监控服务（只读权限）
+[[route_policy]]
+name = "monitoring"
+host = "monitoring.example.com"
+allowed_bearer_names = ["monitoring"]
+require_any_role = ["readonly", "monitoring"]

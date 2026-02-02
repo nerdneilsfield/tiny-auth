@@ -1,0 +1,30 @@
+# 认证转换示例 - 客户端用 Basic Auth，上游收到 Bearer Token
+
+[server]
+port = "8080"
+
+[logging]
+format = "text"
+level = "info"
+
+# 客户端认证
+[[basic_auth]]
+name = "client"
+user = "client"
+pass = "clientpass"
+roles = ["user"]
+
+# 策略：注入上游 Bearer Token
+[[route_policy]]
+name = "transform-to-bearer"
+allowed_basic_names = ["client"]
+inject_authorization = "Bearer upstream-internal-token-abc123456789"
+
+# 使用说明：
+# 1. 客户端使用：curl -u client:clientpass http://api.example.com/
+# 2. tiny-auth 验证 Basic Auth 通过
+# 3. tiny-auth 返回 200，并设置响应头：Authorization: Bearer upstream-internal-token-abc123456789
+# 4. Traefik 将此 Authorization header 注入到上游请求
+# 5. 上游服务收到：Authorization: Bearer upstream-internal-token-abc123456789
+#
+# ⚠️ 注意：Traefik 的 authResponseHeaders 必须包含 "Authorization"

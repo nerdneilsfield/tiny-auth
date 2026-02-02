@@ -1,0 +1,15 @@
+# 最小配置示例 - 仅 Basic Auth
+
+[server]
+port = "8080"
+
+[logging]
+format = "text"
+level = "info"
+
+# 一个管理员用户
+[[basic_auth]]
+name = "admin"
+user = "admin"
+pass = "admin123456"  # 生产环境请使用 env:ADMIN_PASSWORD
+roles = ["admin"]
