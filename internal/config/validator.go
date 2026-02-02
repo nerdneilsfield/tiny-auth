@@ -51,6 +51,21 @@ func Validate(cfg *Config) error {
 		return fmt.Errorf("route_policy: %w", err)
 	}
 
+	// 高级验证：循环依赖检测
+	if err := validatePolicyDependencies(cfg); err != nil {
+		return fmt.Errorf("policy dependencies: %w", err)
+	}
+
+	// 高级验证：策略冲突检测
+	if err := validatePolicyConflicts(cfg.RoutePolicies); err != nil {
+		return fmt.Errorf("policy conflicts: %w", err)
+	}
+
+	// 高级验证：JWT Secret 强度检测
+	if err := validateJWTSecretStrength(&cfg.JWT); err != nil {
+		return fmt.Errorf("jwt security: %w", err)
+	}
+
 	return nil
 }
 
