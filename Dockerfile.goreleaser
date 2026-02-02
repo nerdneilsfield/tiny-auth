@@ -1,11 +1,19 @@
-FROM alpine:3.20
+# Dockerfile for GoReleaser
+# This is used by GoReleaser to build multi-arch Docker images
 
-ARG TARGETPLATFORM
+FROM alpine:latest
 
-RUN addgroup -S app && adduser -S app -G app
-USER app
+RUN apk --no-cache add ca-certificates tzdata
 
-WORKDIR /app
-COPY ${TARGETPLATFORM}/go-template /app/go-template
+WORKDIR /root/
 
-ENTRYPOINT ["/app/go-template"]
+# GoReleaser will copy the binary here
+COPY tiny-auth .
+COPY config.example.toml ./config.toml
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+
+CMD ["./tiny-auth", "server", "--config", "config.toml"]

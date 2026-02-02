@@ -1,0 +1,36 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Documentation
+*.md
+!README.md
+docs/
+openspec/
+
+# Testing
+*_test.go
+test/
+coverage.txt
+
+# CI/CD
+.github/
+.goreleaser.yml
+
+# Build artifacts
+tiny-auth
+dist/
+bin/
+
+# Config
+config.toml
+
+# Dependencies
+vendor/

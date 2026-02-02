@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # tiny-auth 认证服务
+  tiny-auth:
+    # 使用预构建镜像（推荐）
+    image: nerdneils/tiny-auth:latest
+    # 或者本地构建
+    # build: .
+    container_name: tiny-auth
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config.toml:/root/config.toml:ro
+    environment:
+      - CONFIG_PATH=/root/config.toml
+      # 可选：从环境变量读取敏感信息
+      # - ADMIN_PASSWORD=your_secure_password
+      # - JWT_SECRET=your_jwt_secret
+    networks:
+      - traefik-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # Traefik 反向代理（示例）
+  traefik:
+    image: traefik:v3.2
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "8081:8080"  # Traefik Dashboard
+    command:
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - traefik-network
+
+  # 示例：受保护的上游服务
+  whoami:
+    image: traefik/whoami
+    container_name: whoami
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.localhost`)"
+      - "traefik.http.routers.whoami.entrypoints=web"
+      
+      # 配置 ForwardAuth 中间件
+      - "traefik.http.middlewares.tiny-auth.forwardauth.address=http://tiny-auth:8080/auth"
+      - "traefik.http.middlewares.tiny-auth.forwardauth.authResponseHeaders=X-Auth-User,X-Auth-Role,X-Auth-Method"
+      - "traefik.http.middlewares.tiny-auth.forwardauth.trustForwardHeader=false"
+      
+      # 应用中间件
+      - "traefik.http.routers.whoami.middlewares=tiny-auth@docker"
+    networks:
+      - traefik-network
+
+networks:
+  traefik-network:
+    name: traefik-network
