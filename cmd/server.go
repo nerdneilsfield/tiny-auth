@@ -1,13 +1,13 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/nerdneilsfield/tiny-auth/internal/auth"
 	"github.com/nerdneilsfield/tiny-auth/internal/config"
+	apperrors "github.com/nerdneilsfield/tiny-auth/internal/errors"
 	"github.com/nerdneilsfield/tiny-auth/internal/server"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -84,7 +84,11 @@ func reloadConfig(srv *server.Server) error {
 	// 重新加载配置文件
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return apperrors.NewAppError(
+			apperrors.ErrCodeConfigReload,
+			"Failed to reload configuration",
+			err,
+		).WithDetail("config_path", configPath)
 	}
 
 	// 重新构建认证存储

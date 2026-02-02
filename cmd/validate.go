@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/nerdneilsfield/tiny-auth/internal/config"
+	apperrors "github.com/nerdneilsfield/tiny-auth/internal/errors"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -32,8 +33,9 @@ func runValidate(cmd *cobra.Command, args []string) error {
 
 	// 检查文件是否存在
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
-		fmt.Printf("❌ Error: Config file not found: %s\n", cfgPath)
-		return err
+		appErr := apperrors.ConfigNotFound(cfgPath)
+		fmt.Printf("❌ Error: %s\n", appErr.Message)
+		return appErr
 	}
 
 	// 加载并验证配置

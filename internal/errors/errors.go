@@ -14,6 +14,7 @@ const (
 	ErrCodeConfigInvalid       ErrorCode = "CONFIG_INVALID"
 	ErrCodeConfigValidation    ErrorCode = "CONFIG_VALIDATION"
 	ErrCodeConfigPermission    ErrorCode = "CONFIG_PERMISSION"
+	ErrCodeConfigReload        ErrorCode = "CONFIG_RELOAD"
 	ErrCodeEnvVarNotSet        ErrorCode = "ENV_VAR_NOT_SET"
 	ErrCodeEnvVarResolution    ErrorCode = "ENV_VAR_RESOLUTION"
 
