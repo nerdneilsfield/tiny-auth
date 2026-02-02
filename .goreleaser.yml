@@ -1,108 +1,185 @@
-version: 2
-env:
-  - CGO_ENABLED=0
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 
-# before:
-#   hooks:
-#     - ./scripts/manpages.sh
-#     - ./scripts/completions.sh
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    - go mod download
 
 builds:
-  -
-    id: go-template
-    binary: go-template
-    flags:
-      - -trimpath
-    mod_timestamp: "{{ .CommitTimestamp }}"
-    ldflags:
-      - -s -w
-      - -X main.version={{ .Version }}
-      - -X main.buildTime={{ .Date }}
-      - -X main.gitCommit={{ .FullCommit }}
+  - id: tiny-auth
+    binary: tiny-auth
+    env:
+      - CGO_ENABLED=0
     goos:
       - linux
       - darwin
       - windows
-      - freebsd
     goarch:
-      - "386"
       - amd64
       - arm64
-    overrides:
-      - goos: linux
-        ldflags:
-          - -s -w -extldflags "-static"
-          - -X main.version={{ .Version }}
-          - -X main.buildTime={{ .Date }}
-          - -X main.gitCommit={{ .FullCommit }}
+      - arm
+    goarm:
+      - "7"
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.buildTime={{.Date}}
+      - -X main.gitCommit={{.Commit}}
+    mod_timestamp: "{{.CommitTimestamp}}"
 
 archives:
-  -
-    builds:
-      - go-template
+  - id: tiny-auth
+    name_template: "{{.ProjectName}}_{{.Version}}_{{.Os}}_{{.Arch}}{{if .Arm}}v{{.Arm}}{{end}}"
     format_overrides:
       - goos: windows
         format: zip
-    # files:
-    #   - "config_example.toml"
-
-release:
-  github:
-    owner: nerdneilsfield
-    name: go-template
-
-dockers_v2:
-  - id: go-template
-    dockerfile: Dockerfile.goreleaser
-    ids:
-      - go-template
-    images:
-      - nerdneils/go-template
-      - ghcr.io/nerdneilsfield/go-template
-    tags:
-      - "{{ .Tag }}"
-      - "{{ if not .IsNightly }}latest{{ end }}"
-    platforms:
-      - linux/amd64
-      - linux/arm64
-    labels:
-      "io.artifacthub.package.readme-url": "https://raw.githubusercontent.com/nerdneilsfield/go-template/master/README.md"
-      "io.artifacthub.package.maintainers": "[{\"name\":\"dengqqi\",\"email\":\"dengqqi935@gmail.com\"}]"
-      "io.artifacthub.package.license": "MIT"
-      "org.opencontainers.image.description": "Go template application."
-      "org.opencontainers.image.created": "{{ .Date }}"
-      "org.opencontainers.image.name": "{{ .ProjectName }}"
-      "org.opencontainers.image.revision": "{{ .FullCommit }}"
-      "org.opencontainers.image.version": "{{ .Version }}"
-      "org.opencontainers.image.source": "{{ .GitURL }}"
+    files:
+      - LICENSE
+      - README.md
+      - config.example.toml
 
 checksum:
   name_template: "checksums.txt"
+  algorithm: sha256
+
+snapshot:
+  name_template: "{{.Version}}-next"
 
 changelog:
   sort: asc
   use: github
   filters:
     exclude:
-    - '^test:'
-    - '^chore'
-    - 'merge conflict'
-    - Merge pull request
-    - Merge remote-tracking branch
-    - Merge branch
-    - go mod tidy
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
   groups:
-    - title: Dependency updates
-      regexp: '^.*?(feat|fix)\(deps\)!?:.+$'
-      order: 300
-    - title: 'New Features'
-      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
-      order: 100
-    - title: 'Bug fixes'
-      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
-      order: 200
-    - title: 'Documentation updates'
-      regexp: ^.*?docs(\([[:word:]]+\))??!?:.+$
-      order: 400
-    - title: Other work
-      order: 9999
+    - title: "New Features"
+      regexp: "^feat:"
+    - title: "Bug Fixes"
+      regexp: "^fix:"
+    - title: "Security"
+      regexp: "^security:"
+    - title: "Others"
+      order: 999
+
+dockers:
+  # GHCR (GitHub Container Registry) - amd64
+  - image_templates:
+      - "ghcr.io/nerdneilsfield/{{.ProjectName}}:{{.Version}}-amd64"
+      - "ghcr.io/nerdneilsfield/{{.ProjectName}}:latest-amd64"
+    use: buildx
+    dockerfile: Dockerfile.goreleaser
+    build_flag_templates:
+      - --platform=linux/amd64
+      - --label=org.opencontainers.image.title={{.ProjectName}}
+      - --label=org.opencontainers.image.description="A lightweight authentication service for Traefik ForwardAuth"
+      - --label=org.opencontainers.image.url=https://github.com/nerdneilsfield/{{.ProjectName}}
+      - --label=org.opencontainers.image.source=https://github.com/nerdneilsfield/{{.ProjectName}}
+      - --label=org.opencontainers.image.version={{.Version}}
+      - --label=org.opencontainers.image.created={{.Date}}
+      - --label=org.opencontainers.image.revision={{.FullCommit}}
+      - --label=org.opencontainers.image.licenses=MIT
+
+  # GHCR - arm64
+  - image_templates:
+      - "ghcr.io/nerdneilsfield/{{.ProjectName}}:{{.Version}}-arm64"
+      - "ghcr.io/nerdneilsfield/{{.ProjectName}}:latest-arm64"
+    use: buildx
+    goarch: arm64
+    dockerfile: Dockerfile.goreleaser
+    build_flag_templates:
+      - --platform=linux/arm64
+      - --label=org.opencontainers.image.title={{.ProjectName}}
+      - --label=org.opencontainers.image.description="A lightweight authentication service for Traefik ForwardAuth"
+      - --label=org.opencontainers.image.url=https://github.com/nerdneilsfield/{{.ProjectName}}
+      - --label=org.opencontainers.image.source=https://github.com/nerdneilsfield/{{.ProjectName}}
+      - --label=org.opencontainers.image.version={{.Version}}
+      - --label=org.opencontainers.image.created={{.Date}}
+      - --label=org.opencontainers.image.revision={{.FullCommit}}
+      - --label=org.opencontainers.image.licenses=MIT
+
+  # Docker Hub - amd64
+  - image_templates:
+      - "nerdneils/{{.ProjectName}}:{{.Version}}-amd64"
+      - "nerdneils/{{.ProjectName}}:latest-amd64"
+    use: buildx
+    dockerfile: Dockerfile.goreleaser
+    build_flag_templates:
+      - --platform=linux/amd64
+      - --label=org.opencontainers.image.title={{.ProjectName}}
+      - --label=org.opencontainers.image.description="A lightweight authentication service for Traefik ForwardAuth"
+      - --label=org.opencontainers.image.url=https://github.com/nerdneilsfield/{{.ProjectName}}
+      - --label=org.opencontainers.image.source=https://github.com/nerdneilsfield/{{.ProjectName}}
+      - --label=org.opencontainers.image.version={{.Version}}
+      - --label=org.opencontainers.image.created={{.Date}}
+      - --label=org.opencontainers.image.revision={{.FullCommit}}
+      - --label=org.opencontainers.image.licenses=MIT
+
+  # Docker Hub - arm64
+  - image_templates:
+      - "nerdneils/{{.ProjectName}}:{{.Version}}-arm64"
+      - "nerdneils/{{.ProjectName}}:latest-arm64"
+    use: buildx
+    goarch: arm64
+    dockerfile: Dockerfile.goreleaser
+    build_flag_templates:
+      - --platform=linux/arm64
+      - --label=org.opencontainers.image.title={{.ProjectName}}
+      - --label=org.opencontainers.image.description="A lightweight authentication service for Traefik ForwardAuth"
+      - --label=org.opencontainers.image.url=https://github.com/nerdneilsfield/{{.ProjectName}}
+      - --label=org.opencontainers.image.source=https://github.com/nerdneilsfield/{{.ProjectName}}
+      - --label=org.opencontainers.image.version={{.Version}}
+      - --label=org.opencontainers.image.created={{.Date}}
+      - --label=org.opencontainers.image.revision={{.FullCommit}}
+      - --label=org.opencontainers.image.licenses=MIT
+
+docker_manifests:
+  # GHCR manifests
+  - name_template: "ghcr.io/nerdneilsfield/{{.ProjectName}}:{{.Version}}"
+    image_templates:
+      - "ghcr.io/nerdneilsfield/{{.ProjectName}}:{{.Version}}-amd64"
+      - "ghcr.io/nerdneilsfield/{{.ProjectName}}:{{.Version}}-arm64"
+  - name_template: "ghcr.io/nerdneilsfield/{{.ProjectName}}:latest"
+    image_templates:
+      - "ghcr.io/nerdneilsfield/{{.ProjectName}}:latest-amd64"
+      - "ghcr.io/nerdneilsfield/{{.ProjectName}}:latest-arm64"
+
+  # Docker Hub manifests
+  - name_template: "nerdneils/{{.ProjectName}}:{{.Version}}"
+    image_templates:
+      - "nerdneils/{{.ProjectName}}:{{.Version}}-amd64"
+      - "nerdneils/{{.ProjectName}}:{{.Version}}-arm64"
+  - name_template: "nerdneils/{{.ProjectName}}:latest"
+    image_templates:
+      - "nerdneils/{{.ProjectName}}:latest-amd64"
+      - "nerdneils/{{.ProjectName}}:latest-arm64"
+
+release:
+  github:
+    owner: nerdneilsfield
+    name: tiny-auth
+  draft: false
+  prerelease: auto
+  mode: append
+  header: |
+    ## tiny-auth {{.Tag}}
+
+    A lightweight authentication service for Traefik ForwardAuth.
+
+    ### Installation
+
+    **Docker:**
+    ```bash
+    docker pull ghcr.io/nerdneilsfield/tiny-auth:{{.Tag}}
+    ```
+
+    **Binary Download:**
+    Download the appropriate binary for your platform from the assets below.
+
+  footer: |
+    ## What's Changed
+    **Full Changelog**: https://github.com/nerdneilsfield/tiny-auth/compare/{{.PreviousTag}}...{{.Tag}}

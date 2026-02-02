@@ -1,52 +1,107 @@
-projectname := "go-template"
+# justfile for tiny-auth
 
-# 列出所有可用的命令
+# 默认任务：显示帮助
 default:
     @just --list
 
-# 构建 Golang 二进制文件
+# 变量
+binary_name := "tiny-auth"
+version := `git describe --tags --always --dirty 2>/dev/null || echo "dev"`
+commit := `git rev-parse --short HEAD 2>/dev/null || echo "unknown"`
+date := `date -u +"%Y-%m-%dT%H:%M:%SZ"`
+ldflags := "-s -w -X main.version=" + version + " -X main.buildTime=" + date + " -X main.gitCommit=" + commit
+
+# 编译
 build:
-    go build -ldflags "-X main.version=$(git describe --abbrev=0 --tags)" -o {{projectname}}
+    @echo "Building {{binary_name}}..."
+    go build -ldflags="{{ldflags}}" -o {{binary_name}} .
+    @echo "✓ Build complete: {{binary_name}}"
 
-# 安装 Golang 二进制文件
-install:
-    go install -ldflags "-X main.version=$(git describe --abbrev=0 --tags)"
+# 编译并运行
+run: build
+    ./{{binary_name}} server
 
-# 运行应用程序
-run:
-    go run -ldflags "-X main.version=$(git describe --abbrev=0 --tags)" main.go
+# 验证配置
+validate:
+    go run . validate config.toml
 
-# 安装构建依赖
-bootstrap:
-    go generate -tags tools tools/tools.go
+# 运行测试
+test:
+    go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
 
-# 运行测试并显示覆盖率
-test: clean
-    go test --cover -parallel=1 -v -coverprofile=coverage.out ./...
-    go tool cover -func=coverage.out | sort -rnk3
+# 运行测试并生成覆盖率报告
+test-coverage: test
+    go tool cover -html=coverage.txt -o coverage.html
+    @echo "✓ Coverage report: coverage.html"
 
-# 清理环境
-clean:
-    rm -rf coverage.out dist {{projectname}} {{projectname}}.exe
-
-# 显示测试覆盖率
-cover:
-    go test -v -race $(go list ./... | grep -v /vendor/) -v -coverprofile=coverage.out
-    go tool cover -func=coverage.out
-
-# 格式化 Go 文件
-fmt:
-    gofumpt -w .
-    gci write .
-
-# 运行 linter
+# 代码检查
 lint:
-    golangci-lint run -c .golang-ci.yml
+    golangci-lint run ./...
 
-# 测试发布
-release-test:
-    goreleaser release  --snapshot --clean
+# 代码格式化
+fmt:
+    gofmt -s -w .
+    goimports -w .
 
-# 运行 pre-commit 钩子（已注释）
-# pre-commit:
-#     pre-commit run --all-files
+# 清理构建产物
+clean:
+    rm -f {{binary_name}}
+    rm -f coverage.txt coverage.html
+    rm -rf dist/
+
+# 安装依赖
+deps:
+    go mod download
+    go mod tidy
+
+# 安装开发工具
+install-tools:
+    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+    go install golang.org/x/tools/cmd/goimports@latest
+    go install github.com/goreleaser/goreleaser/v2@latest
+
+# 构建 Docker 镜像
+docker-build:
+    docker build -t {{binary_name}}:{{version}} .
+
+# 运行 Docker Compose
+docker-up:
+    docker-compose up -d
+
+# 停止 Docker Compose
+docker-down:
+    docker-compose down
+
+# 查看 Docker 日志
+docker-logs:
+    docker-compose logs -f tiny-auth
+
+# 创建发布（使用 GoReleaser）
+release:
+    goreleaser release --clean
+
+# 快照发布（本地测试）
+snapshot:
+    goreleaser release --snapshot --clean
+
+# 全部检查（测试 + lint）
+check: test lint
+    @echo "✓ All checks passed"
+
+# 准备提交前检查
+pre-commit: fmt check
+    @echo "✓ Ready to commit"
+
+# 安装预提交钩子
+setup-hooks:
+    @echo "Setting up git hooks..."
+    @echo "#!/bin/sh" > .git/hooks/pre-commit
+    @echo "just pre-commit" >> .git/hooks/pre-commit
+    @chmod +x .git/hooks/pre-commit
+    @echo "✓ Git hooks installed"
+
+# 显示版本信息
+version:
+    @echo "Version: {{version}}"
+    @echo "Commit:  {{commit}}"
+    @echo "Date:    {{date}}"

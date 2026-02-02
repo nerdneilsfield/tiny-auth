@@ -1,27 +1,135 @@
-version: "2"
-
-linters:
-  enable:
-    - gofmt
-    - goimports
-    - govet
-    - revive
-    - errcheck
-    - staticcheck
-    - gosimple
-    - ineffassign
-  settings:
-    gofmt:
-      simplify: true
-    govet:
-      enable:
-        - shadow
+# golangci-lint configuration
+# Based on golangci-lint 1.62.2
 
 run:
   timeout: 5m
+  issues-exit-code: 1
+  tests: true
+  modules-download-mode: readonly
+
+output:
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  uniq-by-line: true
+
+linters:
+  disable-all: true
+  enable:
+    # Default linters
+    - errcheck      # 检查未处理的错误
+    - gosimple      # 简化代码
+    - govet         # Go vet 检查
+    - ineffassign   # 检查无效的赋值
+    - staticcheck   # 静态分析
+    - unused        # 检查未使用的常量、变量、函数
+
+    # Additional linters
+    - gofmt         # 检查代码格式
+    - goimports     # 检查 import 顺序
+    - misspell      # 检查拼写错误
+    - revive        # 快速的 golint 替代品
+    - gocritic      # 综合代码检查
+    - gocyclo       # 检查圈复杂度
+    - dupl          # 检查重复代码
+    - gosec         # 安全检查
+    - unconvert     # 检查不必要的类型转换
+    - goconst       # 检查可以提取为常量的重复字符串
+    - gocognit      # 检查认知复杂度
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment  # 字段对齐优化可能影响可读性
+
+  gofmt:
+    simplify: true
+
+  goimports:
+    local-prefixes: github.com/nerdneilsfield/tiny-auth
+
+  revive:
+    rules:
+      - name: var-naming
+        severity: warning
+        disabled: false
+      - name: exported
+        severity: warning
+        disabled: false
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+
+  gocyclo:
+    min-complexity: 15
+
+  dupl:
+    threshold: 100
+
+  gosec:
+    excludes:
+      - G104  # 未处理的错误（已由 errcheck 处理）
+    config:
+      G306: "0600"  # 文件权限检查
+
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
+  gocognit:
+    min-complexity: 20
+
+  misspell:
+    locale: US
+    ignore-words:
+      - auth
 
 issues:
   exclude-rules:
+    # Exclude some linters from running on tests files
     - path: _test\.go
       linters:
+        - gocyclo
         - errcheck
+        - dupl
+        - gosec
+        - goconst
+
+    # Exclude known issues
+    - text: "weak cryptographic primitive"
+      linters:
+        - gosec
+
+    # 忽略某些文件
+    - path: cmd/
+      linters:
+        - gocognit
+
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
+
+  exclude-dirs:
+    - vendor
+    - dist
+    - openspec
+
+  exclude-files:
+    - ".*\\.pb\\.go$"
+    - ".*_gen\\.go$"

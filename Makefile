@@ -1,54 +1,77 @@
-projectname?=go-template
+# Makefile for tiny-auth
 
-default: help
+BINARY_NAME=tiny-auth
+VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+LDFLAGS=-s -w -X main.version=$(VERSION) -X main.buildTime=$(DATE) -X main.gitCommit=$(COMMIT)
 
-.PHONY: help
-help: ## list makefile targets
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+.PHONY: help build run test lint fmt clean deps docker-build docker-up docker-down release check
 
-.PHONY: build
-build: ## build golang binary
-	@go build -ldflags "-X main.version=$(shell git describe --abbrev=0 --tags)" -o $(projectname)
+help: ## 显示帮助信息
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: install
-install: ## install golang binary
-	@go install -ldflags "-X main.version=$(shell git describe --abbrev=0 --tags)"
+build: ## 编译程序
+	@echo "Building $(BINARY_NAME)..."
+	CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BINARY_NAME) .
+	@echo "✓ Build complete: $(BINARY_NAME)"
 
-.PHONY: run
-run: ## run the app
-	@go run -ldflags "-X main.version=$(shell git describe --abbrev=0 --tags)"  main.go
+run: build ## 编译并运行
+	./$(BINARY_NAME) server
 
-.PHONY: bootstrap
-bootstrap: ## install build deps
-	go generate -tags tools tools/tools.go
+validate: ## 验证配置文件
+	go run . validate config.toml
 
-PHONY: test
-test: clean ## display test coverage
-	go test --cover -parallel=1 -v -coverprofile=coverage.out ./...
-	go tool cover -func=coverage.out | sort -rnk3
-	
-PHONY: clean
-clean: ## clean up environment
-	@rm -rf coverage.out dist/ $(projectname)
+test: ## 运行测试
+	go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
 
-PHONY: cover
-cover: ## display test coverage
-	go test -v -race $(shell go list ./... | grep -v /vendor/) -v -coverprofile=coverage.out
-	go tool cover -func=coverage.out
+test-coverage: test ## 生成测试覆盖率报告
+	go tool cover -html=coverage.txt -o coverage.html
+	@echo "✓ Coverage report: coverage.html"
 
-PHONY: fmt
-fmt: ## format go files
-	gofumpt -w .
-	gci write .
+lint: ## 代码检查
+	golangci-lint run ./...
 
-PHONY: lint
-lint: ## lint go files
-	golangci-lint run -c .golang-ci.yml
+fmt: ## 代码格式化
+	gofmt -s -w .
+	goimports -w .
 
-PHONY: release-test
-release-test: ## test release
-	goreleaser release --rm-dist --snapshot --clean --skip-publish
+clean: ## 清理构建产物
+	rm -f $(BINARY_NAME)
+	rm -f coverage.txt coverage.html
+	rm -rf dist/
 
-# .PHONY: pre-commit
-# pre-commit:	## run pre-commit hooks
-# 	pre-commit run --all-files
+deps: ## 安装依赖
+	go mod download
+	go mod tidy
+
+install-tools: ## 安装开发工具
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	go install golang.org/x/tools/cmd/goimports@latest
+	go install github.com/goreleaser/goreleaser/v2@latest
+
+docker-build: ## 构建 Docker 镜像
+	docker build -t $(BINARY_NAME):$(VERSION) .
+
+docker-up: ## 启动 Docker Compose
+	docker-compose up -d
+
+docker-down: ## 停止 Docker Compose
+	docker-compose down
+
+docker-logs: ## 查看 Docker 日志
+	docker-compose logs -f tiny-auth
+
+release: ## 创建发布（使用 GoReleaser）
+	goreleaser release --clean
+
+snapshot: ## 快照发布（本地测试）
+	goreleaser release --snapshot --clean
+
+check: test lint ## 全部检查
+	@echo "✓ All checks passed"
+
+pre-commit: fmt check ## 提交前检查
+	@echo "✓ Ready to commit"
+
+.DEFAULT_GOAL := help
