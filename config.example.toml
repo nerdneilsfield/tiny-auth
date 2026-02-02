@@ -59,13 +59,19 @@ ban_secs = 300       # 封禁时长（秒）- 超过限制后禁止访问的时�
 [[basic_auth]]
 name = "admin-user"
 user = "admin"
-pass = "supersecret"              # 支持 env:VAR_NAME 语法
+pass = "supersecret"              # 明文密码（支持 env:VAR_NAME 语法）
+# pass_hash = "$2a$10$..."        # bcrypt 哈希密码（推荐，更安全）
 roles = ["admin", "user"]
+# 提示：生成 bcrypt 哈希
+#   方法 1: tiny-auth hash-password "your-password"
+#   方法 2: htpasswd -bnBC 10 "" "your-password" | tr -d ':'
+#   方法 3: python3 -c 'import bcrypt; print(bcrypt.hashpw(b"password", bcrypt.gensalt(10)).decode())'
 
 [[basic_auth]]
 name = "dev-user"
 user = "dev"
 pass = "env:DEV_PASSWORD"         # 从环境变量读取密码
+# pass_hash = "env:DEV_PASSWORD_HASH"  # 也可以从环境变量读取哈希
 roles = ["developer"]
 
 # ===== Bearer Token 配置 =====

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/nerdneilsfield/tiny-auth/internal/config"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestTryBasic(t *testing.T) {
@@ -199,5 +200,165 @@ func BenchmarkTryBasic_Failure(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		TryBasic(authHeader, store)
+	}
+}
+
+// TestTryBasic_Bcrypt 测试 bcrypt 哈希密码
+func TestTryBasic_Bcrypt(t *testing.T) {
+	// 生成 bcrypt 哈希 (cost 为 10)
+	hash1, _ := bcrypt.GenerateFromPassword([]byte("bcryptpass123"), 10)
+	hash2, _ := bcrypt.GenerateFromPassword([]byte("anothersecret"), 10)
+
+	store := &AuthStore{
+		BasicByUser: map[string]config.BasicAuthConfig{
+			"user1": {
+				Name:     "user1-hash",
+				User:     "user1",
+				PassHash: string(hash1),
+				Roles:    []string{"user"},
+			},
+			"user2": {
+				Name:     "user2-hash",
+				User:     "user2",
+				PassHash: string(hash2),
+				Roles:    []string{"admin"},
+			},
+		},
+	}
+
+	tests := []struct {
+		name        string
+		authHeader  string
+		expectNil   bool
+		expectUser  string
+		expectRoles []string
+	}{
+		{
+			name:        "Valid bcrypt password (user1)",
+			authHeader:  "Basic " + base64.StdEncoding.EncodeToString([]byte("user1:bcryptpass123")),
+			expectNil:   false,
+			expectUser:  "user1",
+			expectRoles: []string{"user"},
+		},
+		{
+			name:        "Valid bcrypt password (user2)",
+			authHeader:  "Basic " + base64.StdEncoding.EncodeToString([]byte("user2:anothersecret")),
+			expectNil:   false,
+			expectUser:  "user2",
+			expectRoles: []string{"admin"},
+		},
+		{
+			name:       "Invalid bcrypt password",
+			authHeader: "Basic " + base64.StdEncoding.EncodeToString([]byte("user1:wrongpassword")),
+			expectNil:  true,
+		},
+		{
+			name:       "Empty password",
+			authHeader: "Basic " + base64.StdEncoding.EncodeToString([]byte("user1:")),
+			expectNil:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := TryBasic(tt.authHeader, store)
+
+			if tt.expectNil {
+				if result != nil {
+					t.Errorf("Expected nil result, got %+v", result)
+				}
+				return
+			}
+
+			if result == nil {
+				t.Fatal("Expected non-nil result")
+			}
+
+			if result.User != tt.expectUser {
+				t.Errorf("Expected user %q, got %q", tt.expectUser, result.User)
+			}
+
+			if result.Method != "basic" {
+				t.Errorf("Expected method 'basic', got %q", result.Method)
+			}
+
+			if len(result.Roles) != len(tt.expectRoles) {
+				t.Errorf("Expected %d roles, got %d", len(tt.expectRoles), len(result.Roles))
+			}
+
+			for i, role := range tt.expectRoles {
+				if result.Roles[i] != role {
+					t.Errorf("Expected role[%d]=%q, got %q", i, role, result.Roles[i])
+				}
+			}
+		})
+	}
+}
+
+// TestTryBasic_BcryptFallback 测试 bcrypt 和明文密码混合使用
+func TestTryBasic_BcryptFallback(t *testing.T) {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("hashedpassword"), 10)
+
+	store := &AuthStore{
+		BasicByUser: map[string]config.BasicAuthConfig{
+			"hash-user": {
+				Name:     "hash-user",
+				User:     "hash-user",
+				PassHash: string(hash),
+				Roles:    []string{"hashed"},
+			},
+			"plain-user": {
+				Name:  "plain-user",
+				User:  "plain-user",
+				Pass:  "plainpassword",
+				Roles: []string{"plain"},
+			},
+		},
+	}
+
+	// 测试 bcrypt 用户
+	hashAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte("hash-user:hashedpassword"))
+	result := TryBasic(hashAuth, store)
+	if result == nil || result.User != "hash-user" {
+		t.Error("Bcrypt auth should succeed")
+	}
+
+	// 测试明文密码用户
+	plainAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte("plain-user:plainpassword"))
+	result = TryBasic(plainAuth, store)
+	if result == nil || result.User != "plain-user" {
+		t.Error("Plain password auth should succeed")
+	}
+}
+
+// TestTryBasic_BcryptPriority 测试 bcrypt 优先级（同时配置时）
+func TestTryBasic_BcryptPriority(t *testing.T) {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("correctpassword"), 10)
+
+	// 同时配置 pass 和 pass_hash，pass_hash 应该优先
+	store := &AuthStore{
+		BasicByUser: map[string]config.BasicAuthConfig{
+			"user": {
+				Name:     "test-user",
+				User:     "user",
+				Pass:     "wrongpassword",   // 错误的明文密码
+				PassHash: string(hash),      // 正确的哈希密码
+				Roles:    []string{"user"},
+			},
+		},
+	}
+
+	// 使用正确的密码（与 pass_hash 匹配）
+	correctAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte("user:correctpassword"))
+	result := TryBasic(correctAuth, store)
+	if result == nil {
+		t.Error("Auth with correct password (matching pass_hash) should succeed")
+	}
+
+	// 使用错误的密码（与 pass 匹配但与 pass_hash 不匹配）
+	wrongAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte("user:wrongpassword"))
+	result = TryBasic(wrongAuth, store)
+	if result != nil {
+		t.Error("Auth with password matching pass (but not pass_hash) should fail when pass_hash is present")
 	}
 }

@@ -140,8 +140,14 @@ func validateBasicAuths(configs []BasicAuthConfig) error {
 		if cfg.User == "" {
 			return fmt.Errorf("[%s] user cannot be empty", cfg.Name)
 		}
-		if cfg.Pass == "" {
-			return fmt.Errorf("[%s] pass cannot be empty", cfg.Name)
+		// pass 和 pass_hash 至少要有一个
+		if cfg.Pass == "" && cfg.PassHash == "" {
+			return fmt.Errorf("[%s] either pass or pass_hash must be provided", cfg.Name)
+		}
+
+		// 如果同时提供了 pass 和 pass_hash，发出警告（优先使用 pass_hash）
+		if cfg.Pass != "" && cfg.PassHash != "" {
+			fmt.Fprintf(os.Stderr, "⚠ Warning: Basic auth [%s] has both pass and pass_hash configured. pass_hash will be used.\n", cfg.Name)
 		}
 
 		// 检查重复名称
@@ -156,9 +162,11 @@ func validateBasicAuths(configs []BasicAuthConfig) error {
 		}
 		users[cfg.User] = true
 
-		// 弱密码警告
-		if len(cfg.Pass) < 12 && !strings.HasPrefix(cfg.Pass, "env:") {
-			fmt.Fprintf(os.Stderr, "⚠ Warning: Basic auth [%s] has short password (< 12 chars)\n", cfg.Name)
+		// 弱密码警告（仅对明文密码，bcrypt 哈希已经足够安全）
+		if cfg.PassHash == "" && cfg.Pass != "" {
+			if len(cfg.Pass) < 12 && !strings.HasPrefix(cfg.Pass, "env:") {
+				fmt.Fprintf(os.Stderr, "⚠ Warning: Basic auth [%s] has short password (< 12 chars). Consider using pass_hash with bcrypt.\n", cfg.Name)
+			}
 		}
 	}
 

@@ -48,10 +48,11 @@ type RateLimitConfig struct {
 
 // BasicAuthConfig Basic 认证配置
 type BasicAuthConfig struct {
-	Name  string   `toml:"name"`  // 唯一标识符
-	User  string   `toml:"user"`  // 用户名
-	Pass  string   `toml:"pass"`  // 密码（支持 env:VAR 语法）
-	Roles []string `toml:"roles"` // 关联的角色
+	Name     string   `toml:"name"`      // 唯一标识符
+	User     string   `toml:"user"`      // 用户名
+	Pass     string   `toml:"pass"`      // 明文密码（支持 env:VAR 语法）
+	PassHash string   `toml:"pass_hash"` // bcrypt 哈希密码（推荐，与 pass 二选一）
+	Roles    []string `toml:"roles"`     // 关联的角色
 }
 
 // BearerConfig Bearer Token 配置

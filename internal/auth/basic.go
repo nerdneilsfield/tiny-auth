@@ -4,6 +4,8 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"strings"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // TryBasic 尝试 Basic Auth 认证
@@ -32,8 +34,19 @@ func TryBasic(authHeader string, store *AuthStore) *AuthResult {
 		return nil
 	}
 
-	// 使用常量时间比较密码（防止时序攻击）
-	if subtle.ConstantTimeCompare([]byte(pass), []byte(cfg.Pass)) != 1 {
+	// 验证密码
+	// 优先使用 bcrypt 哈希（如果配置了）
+	var passwordValid bool
+	if cfg.PassHash != "" {
+		// 使用 bcrypt 验证哈希密码
+		err := bcrypt.CompareHashAndPassword([]byte(cfg.PassHash), []byte(pass))
+		passwordValid = (err == nil)
+	} else {
+		// 回退到明文密码比较（使用常量时间比较防止时序攻击）
+		passwordValid = (subtle.ConstantTimeCompare([]byte(pass), []byte(cfg.Pass)) == 1)
+	}
+
+	if !passwordValid {
 		return nil
 	}
 

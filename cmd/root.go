@@ -49,6 +49,7 @@ It supports multiple authentication methods (Basic Auth, Bearer Token, API Key, 
 	cmd.AddCommand(newServerCmd())
 	cmd.AddCommand(newValidateCmd())
 	cmd.AddCommand(newVersionCmd(version, buildTime, gitCommit))
+	cmd.AddCommand(newHashPasswordCmd())
 
 	return cmd
 }
