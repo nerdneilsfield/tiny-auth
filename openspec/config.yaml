@@ -1,0 +1,52 @@
+schema: spec-driven
+
+# Project context
+context: |
+  Tech stack: Go 1.23+, Fiber v2 (HTTP framework), TOML (configuration), JWT
+  Project: tiny-auth - Traefik ForwardAuth authentication service
+  Domain: Authentication & Authorization middleware
+  
+  ## Architecture
+  - Traefik forward auth middleware
+  - Support multiple authentication methods: Basic Auth, Bearer Token, API Key, JWT
+  - Route-based policy matching (host, path, method)
+  - Multi-config support (multiple users/tokens per auth type)
+  - Header injection for upstream services
+  
+  ## Coding Conventions
+  - Use Chinese comments in code
+  - Use English for user-facing messages and documentation
+  - Follow Go standard project layout
+  - Use cobra for CLI commands
+  - Use zap for structured logging
+  
+  ## Authentication Flow
+  1. Traefik forwards auth request to /auth endpoint
+  2. Service validates credentials against configured policies
+  3. If valid: return 200 with response headers (injected to upstream)
+  4. If invalid: return 401/403 with WWW-Authenticate challenge
+  
+  ## Reference Implementations
+  - Support TOML-based configuration with hot-reload capability
+  - Route policies can override global auth settings
+  - Support anonymous access for specific routes
+  - Prometheus metrics for monitoring
+
+# Per-artifact rules
+rules:
+  proposal:
+    - Focus on authentication flow and security considerations
+    - Include Traefik integration examples
+    - Keep under 800 words
+  specs:
+    - Define clear authentication scenarios
+    - Include TOML configuration examples
+    - Cover edge cases (anonymous, multi-auth, role-based)
+  design:
+    - Follow Go best practices
+    - Consider security (constant-time comparison, no secrets in logs)
+    - Design for extensibility (easy to add new auth methods)
+  tasks:
+    - Break into logical components (config, auth handlers, routing, CLI)
+    - Each task should be testable independently
+    - Include validation and error handling tasks
