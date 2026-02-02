@@ -18,6 +18,12 @@ func ResolveEnvVars(cfg *Config) error {
 			return fmt.Errorf("basic_auth[%s].pass: %w", cfg.BasicAuths[i].Name, err)
 		}
 		cfg.BasicAuths[i].Pass = resolved
+
+		resolvedHash, err := resolveValue(cfg.BasicAuths[i].PassHash)
+		if err != nil {
+			return fmt.Errorf("basic_auth[%s].pass_hash: %w", cfg.BasicAuths[i].Name, err)
+		}
+		cfg.BasicAuths[i].PassHash = resolvedHash
 	}
 
 	// 解析 Bearer Token

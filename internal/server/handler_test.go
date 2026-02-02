@@ -101,6 +101,11 @@ func TestHandleAuth_BasicAuth(t *testing.T) {
 			wantStatus: 200,
 		},
 		{
+			name:       "Valid Basic Auth (lowercase scheme)",
+			authHeader: "basic YWRtaW46c2VjcmV0MTIz", // admin:secret123
+			wantStatus: 200,
+		},
+		{
 			name:       "Invalid Basic Auth",
 			authHeader: "Basic YWRtaW46d3JvbmdwYXNz", // admin:wrongpass
 			wantStatus: 401,
@@ -168,6 +173,12 @@ func TestHandleAuth_BearerToken(t *testing.T) {
 		{
 			name:       "Valid Bearer Token",
 			authHeader: "Bearer valid-token-123",
+			wantStatus: 200,
+			wantRoles:  "service,read",
+		},
+		{
+			name:       "Valid Bearer Token (lowercase scheme)",
+			authHeader: "bearer valid-token-123",
 			wantStatus: 200,
 			wantRoles:  "service,read",
 		},
@@ -241,6 +252,11 @@ func TestHandleAuth_APIKey(t *testing.T) {
 			wantStatus: 200,
 		},
 		{
+			name:       "Valid API Key (lowercase scheme)",
+			authHeader: "apikey app-key-123",
+			wantStatus: 200,
+		},
+		{
 			name:         "Valid API Key (X-Api-Key)",
 			apiKeyHeader: "app-key-123",
 			wantStatus:   200,
@@ -301,10 +317,10 @@ func TestHandleAuth_PolicyCheck(t *testing.T) {
 		},
 		RoutePolicies: []config.RoutePolicy{
 			{
-				Name:            "admin-only",
-				PathPrefix:      "/admin",
-				RequireAnyRole:  []string{"admin"},
-				AllowAnonymous:  false,
+				Name:           "admin-only",
+				PathPrefix:     "/admin",
+				RequireAnyRole: []string{"admin"},
+				AllowAnonymous: false,
 			},
 		},
 		Headers: config.HeadersConfig{
@@ -423,11 +439,11 @@ func TestHandleAuth_HeaderInjection(t *testing.T) {
 		},
 		RoutePolicies: []config.RoutePolicy{
 			{
-				Name:                 "with-injection",
-				PathPrefix:           "/api",
-				InjectAuthorization:  "Bearer injected-token-123",
-				AllowAnonymous:       false,
-				AllowedBasicNames:    []string{"user1"},
+				Name:                "with-injection",
+				PathPrefix:          "/api",
+				InjectAuthorization: "Bearer injected-token-123",
+				AllowAnonymous:      false,
+				AllowedBasicNames:   []string{"user1"},
 			},
 		},
 		Headers: config.HeadersConfig{

@@ -1,6 +1,8 @@
 package server
 
 import (
+	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,14 +33,18 @@ func (s *Server) HandleAuth(c *fiber.Ctx) error {
 	if rateLimiter != nil {
 		allowed, retryAfter := rateLimiter.Allow(clientIP)
 		if !allowed {
+			retryAfterSeconds := int64(math.Ceil(retryAfter.Seconds()))
+			if retryAfterSeconds < 1 {
+				retryAfterSeconds = 1
+			}
 			s.Logger.Warn("rate limit exceeded",
 				zap.String("client_ip", clientIP),
 				zap.Duration("retry_after", retryAfter),
 			)
-			c.Set("Retry-After", retryAfter.String())
+			c.Set("Retry-After", strconv.FormatInt(retryAfterSeconds, 10))
 			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
 				"error":       "Too many authentication attempts",
-				"retry_after": retryAfter.Seconds(),
+				"retry_after": retryAfterSeconds,
 				"timestamp":   time.Now().Unix(),
 			})
 		}
@@ -86,28 +92,28 @@ func (s *Server) HandleAuth(c *fiber.Ctx) error {
 
 	// 4. 尝试各种认证方式（按优先级）
 	authHeader := c.Get("Authorization")
+	authScheme, authToken := auth.ParseAuthHeader(authHeader)
 	var result *auth.AuthResult
 
 	// 优先级 1: JWT（如果配置了且看起来像 JWT）
-	if cfg.JWT.Secret != "" && strings.HasPrefix(authHeader, "Bearer ") {
-		token := strings.TrimPrefix(authHeader, "Bearer ")
-		if auth.IsJWT(token) {
-			result = auth.TryJWT(token, &cfg.JWT)
+	if cfg.JWT.Secret != "" && strings.EqualFold(authScheme, "Bearer") {
+		if auth.IsJWT(authToken) {
+			result = auth.TryJWT(authToken, &cfg.JWT)
 		}
 	}
 
 	// 优先级 2: Bearer Token（静态 token）
-	if result == nil && strings.HasPrefix(authHeader, "Bearer ") {
+	if result == nil && strings.EqualFold(authScheme, "Bearer") {
 		result = auth.TryBearer(authHeader, store)
 	}
 
 	// 优先级 3: Basic Auth
-	if result == nil && strings.HasPrefix(authHeader, "Basic ") {
+	if result == nil && strings.EqualFold(authScheme, "Basic") {
 		result = auth.TryBasic(authHeader, store)
 	}
 
 	// 优先级 4: API Key (Authorization: ApiKey xxx)
-	if result == nil && strings.HasPrefix(authHeader, "ApiKey ") {
+	if result == nil && strings.EqualFold(authScheme, "ApiKey") {
 		result = auth.TryAPIKeyAuth(authHeader, store)
 	}
 

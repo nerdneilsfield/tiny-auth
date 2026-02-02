@@ -8,6 +8,7 @@ auth_path = "/auth"        # ForwardAuth 端点路径
 health_path = "/health"    # 健康检查端点路径
 read_timeout = 5           # 读超时（秒）
 write_timeout = 5          # 写超时（秒）
+enable_debug = false       # 是否启用 /debug/config（生产环境建议关闭）
 
 # ⚠️ SECURITY: Trusted Proxies Configuration
 # 可信代理列表：只接受来自这些 IP/网络的 X-Forwarded-* headers
@@ -22,6 +23,8 @@ write_timeout = 5          # 写超时（秒）
 #
 # 为什么重要：
 # 没有此配置，攻击者可以伪造 X-Forwarded-Host/For 来绕过策略！
+# 如果你的负载均衡/反向代理不会清理客户端伪造的 X-Forwarded-* 头，
+# 即使设置了 trusted_proxies 也可能被绕过，请确保代理侧已清洗。
 # 
 # 生产环境（Traefik 在 Docker 中）：
 trusted_proxies = ["172.16.0.0/12"]

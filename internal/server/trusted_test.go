@@ -48,8 +48,8 @@ func TestParseTrustedProxies(t *testing.T) {
 			proxies:   []string{"::1"},
 			wantCount: 1,
 			testIPs: map[string]bool{
-				"::1":   true,
-				"::2":   false,
+				"::1":    true,
+				"::2":    false,
 				"fe80::": false,
 			},
 		},
@@ -147,6 +147,30 @@ func TestIsTrustedProxy_EmptyList(t *testing.T) {
 		if !isTrustedProxy(ip, emptyCIDRs) {
 			t.Errorf("empty trusted list should trust all IPs, but %q was not trusted", ip)
 		}
+	}
+}
+
+func TestNormalizeHost(t *testing.T) {
+	tests := []struct {
+		name string
+		host string
+		want string
+	}{
+		{"hostname", "example.com", "example.com"},
+		{"hostname with port", "example.com:443", "example.com"},
+		{"hostname uppercase", "EXAMPLE.COM", "example.com"},
+		{"multiple values", "example.com, proxy.local", "example.com"},
+		{"ipv6 bracketed", "[::1]:443", "::1"},
+		{"ipv6 raw", "::1", "::1"},
+		{"empty", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := normalizeHost(tt.host); got != tt.want {
+				t.Errorf("normalizeHost(%q) = %q, want %q", tt.host, got, tt.want)
+			}
+		})
 	}
 }
 

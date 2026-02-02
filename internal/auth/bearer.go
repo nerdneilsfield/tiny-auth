@@ -7,12 +7,10 @@ import (
 
 // TryBearer 尝试 Bearer Token 认证
 func TryBearer(authHeader string, store *AuthStore) *AuthResult {
-	if !strings.HasPrefix(authHeader, "Bearer ") {
+	scheme, token := ParseAuthHeader(authHeader)
+	if !strings.EqualFold(scheme, "Bearer") {
 		return nil
 	}
-
-	token := strings.TrimPrefix(authHeader, "Bearer ")
-	token = strings.TrimSpace(token)
 
 	if token == "" {
 		return nil

@@ -21,6 +21,7 @@ type ServerConfig struct {
 	ReadTimeout    int      `toml:"read_timeout"`    // 读超时（秒）
 	WriteTimeout   int      `toml:"write_timeout"`   // 写超时（秒）
 	TrustedProxies []string `toml:"trusted_proxies"` // 可信代理 IP/CIDR 列表（用于验证 X-Forwarded-* headers）
+	EnableDebug    bool     `toml:"enable_debug"`    // 是否启用调试端点
 }
 
 // HeadersConfig Header 配置
@@ -51,7 +52,7 @@ type BasicAuthConfig struct {
 	Name     string   `toml:"name"`      // 唯一标识符
 	User     string   `toml:"user"`      // 用户名
 	Pass     string   `toml:"pass"`      // 明文密码（支持 env:VAR 语法）
-	PassHash string   `toml:"pass_hash"` // bcrypt 哈希密码（推荐，与 pass 二选一）
+	PassHash string   `toml:"pass_hash"` // bcrypt 哈希密码（推荐，与 pass 二选一，支持 env:VAR 语法）
 	Roles    []string `toml:"roles"`     // 关联的角色
 }
 
@@ -71,9 +72,9 @@ type APIKeyConfig struct {
 
 // JWTConfig JWT 配置
 type JWTConfig struct {
-	Secret        string `toml:"secret"`         // HS256 签名密钥（支持 env:VAR 语法）
-	Issuer        string `toml:"issuer"`         // 期望的 issuer (iss claim)
-	Audience      string `toml:"audience"`       // 期望的 audience (aud claim)
+	Secret        string `toml:"secret"`          // HS256 签名密钥（支持 env:VAR 语法）
+	Issuer        string `toml:"issuer"`          // 期望的 issuer (iss claim)
+	Audience      string `toml:"audience"`        // 期望的 audience (aud claim)
 	UserClaimName string `toml:"user_claim_name"` // 用户标识的 claim 名称（默认为 "sub"，可配置为 "preferred_username" 等）
 }
 

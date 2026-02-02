@@ -7,18 +7,16 @@ import (
 
 // TryAPIKeyAuth 尝试 API Key 认证（通过 Authorization: ApiKey xxx）
 func TryAPIKeyAuth(authHeader string, store *AuthStore) *AuthResult {
-	if !strings.HasPrefix(authHeader, "ApiKey ") {
+	scheme, token := ParseAuthHeader(authHeader)
+	if !strings.EqualFold(scheme, "ApiKey") {
 		return nil
 	}
 
-	key := strings.TrimPrefix(authHeader, "ApiKey ")
-	key = strings.TrimSpace(key)
-
-	if key == "" {
+	if token == "" {
 		return nil
 	}
 
-	return lookupAPIKey(key, store)
+	return lookupAPIKey(token, store)
 }
 
 // TryAPIKeyHeader 尝试 API Key 认证（通过 X-Api-Key header）

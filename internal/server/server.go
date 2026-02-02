@@ -93,9 +93,11 @@ func NewServer(cfg *config.Config, store *auth.AuthStore, logger *zap.Logger) *S
 	})
 
 	// 调试端点（可选）
-	app.Get("/debug/config", func(c *fiber.Ctx) error {
-		return srv.HandleDebug(c)
-	})
+	if cfg.Server.EnableDebug {
+		app.Get("/debug/config", func(c *fiber.Ctx) error {
+			return srv.HandleDebug(c)
+		})
+	}
 
 	srv.App = app
 	return srv
@@ -135,6 +137,18 @@ func (s *Server) Reload(cfg *config.Config, store *auth.AuthStore) {
 
 	s.Config = cfg
 	s.Store = store
+	if s.RateLimiter != nil {
+		s.RateLimiter.Stop()
+	}
+	if cfg.RateLimit.Enabled {
+		s.RateLimiter = ratelimit.NewLimiter(
+			cfg.RateLimit.MaxAttempts,
+			time.Duration(cfg.RateLimit.WindowSecs)*time.Second,
+			time.Duration(cfg.RateLimit.BanSecs)*time.Second,
+		)
+	} else {
+		s.RateLimiter = nil
+	}
 
 	s.Logger.Info("configuration reloaded",
 		zap.Int("basic_auth_users", len(cfg.BasicAuths)),

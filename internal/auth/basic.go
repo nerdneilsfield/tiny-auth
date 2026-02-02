@@ -10,18 +10,23 @@ import (
 
 // TryBasic 尝试 Basic Auth 认证
 func TryBasic(authHeader string, store *AuthStore) *AuthResult {
-	if !strings.HasPrefix(authHeader, "Basic ") {
+	scheme, payload := ParseAuthHeader(authHeader)
+	if !strings.EqualFold(scheme, "Basic") {
 		return nil
 	}
 
 	// 解码 base64
-	payload, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(authHeader, "Basic "))
+	if payload == "" {
+		return nil
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(payload)
 	if err != nil {
 		return nil
 	}
 
 	// 解析 username:password
-	parts := strings.SplitN(string(payload), ":", 2)
+	parts := strings.SplitN(string(decoded), ":", 2)
 	if len(parts) != 2 {
 		return nil
 	}

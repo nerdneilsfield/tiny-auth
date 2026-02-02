@@ -69,14 +69,17 @@ func TestResolveValue_EnvEmpty(t *testing.T) {
 // TestResolveEnvVars_BasicAuth 测试 Basic Auth 环境变量解析
 func TestResolveEnvVars_BasicAuth(t *testing.T) {
 	os.Setenv("BASIC_PASS", "secret-password")
+	os.Setenv("BASIC_PASS_HASH", "$2a$10$examplehash")
 	defer os.Unsetenv("BASIC_PASS")
+	defer os.Unsetenv("BASIC_PASS_HASH")
 
 	cfg := &Config{
 		BasicAuths: []BasicAuthConfig{
 			{
-				Name: "test",
-				User: "testuser",
-				Pass: "env:BASIC_PASS",
+				Name:     "test",
+				User:     "testuser",
+				Pass:     "env:BASIC_PASS",
+				PassHash: "env:BASIC_PASS_HASH",
 			},
 		},
 	}
@@ -88,6 +91,9 @@ func TestResolveEnvVars_BasicAuth(t *testing.T) {
 
 	if cfg.BasicAuths[0].Pass != "secret-password" {
 		t.Errorf("Expected password 'secret-password', got %s", cfg.BasicAuths[0].Pass)
+	}
+	if cfg.BasicAuths[0].PassHash != "$2a$10$examplehash" {
+		t.Errorf("Expected pass_hash '$2a$10$examplehash', got %s", cfg.BasicAuths[0].PassHash)
 	}
 }
 
@@ -177,11 +183,13 @@ func TestResolveEnvVars_EmptyJWT(t *testing.T) {
 // TestResolveEnvVars_MultipleTypes 测试同时解析多种类型
 func TestResolveEnvVars_MultipleTypes(t *testing.T) {
 	os.Setenv("PASS1", "password1")
+	os.Setenv("PASS_HASH1", "$2a$10$hashvalue")
 	os.Setenv("TOKEN1", "token1")
 	os.Setenv("KEY1", "key1")
 	os.Setenv("JWT_SEC", "jwtsecret")
 	defer func() {
 		os.Unsetenv("PASS1")
+		os.Unsetenv("PASS_HASH1")
 		os.Unsetenv("TOKEN1")
 		os.Unsetenv("KEY1")
 		os.Unsetenv("JWT_SEC")
@@ -189,7 +197,7 @@ func TestResolveEnvVars_MultipleTypes(t *testing.T) {
 
 	cfg := &Config{
 		BasicAuths: []BasicAuthConfig{
-			{Name: "user1", User: "user1", Pass: "env:PASS1"},
+			{Name: "user1", User: "user1", Pass: "env:PASS1", PassHash: "env:PASS_HASH1"},
 		},
 		BearerTokens: []BearerConfig{
 			{Name: "svc1", Token: "env:TOKEN1"},
@@ -210,6 +218,9 @@ func TestResolveEnvVars_MultipleTypes(t *testing.T) {
 	// 验证所有值都被正确解析
 	if cfg.BasicAuths[0].Pass != "password1" {
 		t.Errorf("Expected password 'password1', got %s", cfg.BasicAuths[0].Pass)
+	}
+	if cfg.BasicAuths[0].PassHash != "$2a$10$hashvalue" {
+		t.Errorf("Expected pass_hash '$2a$10$hashvalue', got %s", cfg.BasicAuths[0].PassHash)
 	}
 	if cfg.BearerTokens[0].Token != "token1" {
 		t.Errorf("Expected token 'token1', got %s", cfg.BearerTokens[0].Token)
@@ -234,6 +245,15 @@ func TestResolveEnvVars_ErrorPropagation(t *testing.T) {
 			cfg: &Config{
 				BasicAuths: []BasicAuthConfig{
 					{Name: "test", User: "user", Pass: "env:MISSING_VAR"},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Basic Auth pass_hash with missing env",
+			cfg: &Config{
+				BasicAuths: []BasicAuthConfig{
+					{Name: "test", User: "user", PassHash: "env:MISSING_VAR"},
 				},
 			},
 			wantErr: true,

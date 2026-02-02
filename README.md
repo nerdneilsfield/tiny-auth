@@ -502,7 +502,14 @@ curl http://localhost:8080/health
 }
 ```
 
-### Debug Endpoint
+### Debug Endpoint (Optional)
+
+Enable in config first:
+
+```toml
+[server]
+enable_debug = true
+```
 
 ```bash
 curl http://localhost:8080/debug/config
@@ -521,6 +528,8 @@ curl http://localhost:8080/debug/config
 }
 ```
 
+⚠️ **Do not expose this endpoint publicly.** Restrict it to trusted networks only.
+
 ---
 
 ## 🔒 Security Best Practices
@@ -530,6 +539,9 @@ curl http://localhost:8080/debug/config
 1. **⚠️ Configure Trusted Proxies (CRITICAL!)**
    
    **Why**: Prevents attackers from spoofing `X-Forwarded-*` headers to bypass policies.
+
+   **Important**: Your reverse proxy/load balancer MUST strip or overwrite any client-supplied `X-Forwarded-*` headers.  
+   If it doesn't, `trusted_proxies` can still be bypassed.
    
    ```toml
    [server]

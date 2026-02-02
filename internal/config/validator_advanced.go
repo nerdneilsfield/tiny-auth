@@ -113,7 +113,7 @@ func validatePolicyConflicts(policies []RoutePolicy) error {
 
 	// 如果有冲突，提示用户
 	if hasConflict {
-		fmt.Fprintf(os.Stderr, "💡 Tip: Consider adding a 'priority' field to policies (future feature)\n")
+		fmt.Fprintf(os.Stderr, "💡 Tip: Use the 'priority' field to control policy match order\n")
 	}
 
 	return nil // 冲突不是错误，只是警告

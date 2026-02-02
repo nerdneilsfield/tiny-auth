@@ -98,7 +98,7 @@ func getForwardedHeaders(c *fiber.Ctx, trustedCIDRs []*net.IPNet) (host, uri, me
 	// 检查是否来自可信代理
 	if !isTrustedProxy(directIP, trustedCIDRs) {
 		// 不可信，使用直接请求的值
-		return c.Hostname(), c.OriginalURL(), c.Method(), false
+		return normalizeHost(c.Hostname()), c.OriginalURL(), c.Method(), false
 	}
 
 	// 可信代理，使用转发的 headers
@@ -109,6 +109,7 @@ func getForwardedHeaders(c *fiber.Ctx, trustedCIDRs []*net.IPNet) (host, uri, me
 	if host == "" {
 		host = c.Hostname()
 	}
+	host = normalizeHost(host)
 
 	uri = c.Get("X-Forwarded-Uri")
 	if uri == "" {
@@ -121,4 +122,36 @@ func getForwardedHeaders(c *fiber.Ctx, trustedCIDRs []*net.IPNet) (host, uri, me
 	}
 
 	return host, uri, method, true
+}
+
+// normalizeHost 规范化 host（去除端口、取首个值、统一大小写）
+func normalizeHost(host string) string {
+	if host == "" {
+		return ""
+	}
+
+	// 取第一个值（如果有多个，按逗号分隔）
+	if strings.Contains(host, ",") {
+		host = strings.Split(host, ",")[0]
+	}
+	host = strings.TrimSpace(host)
+	if host == "" {
+		return ""
+	}
+
+	// 处理带中括号的 IPv6: [::1]:443
+	if strings.HasPrefix(host, "[") {
+		if end := strings.Index(host, "]"); end != -1 {
+			return strings.ToLower(host[1:end])
+		}
+	}
+
+	// 处理 host:port (IPv4/hostname)
+	if strings.Count(host, ":") == 1 {
+		if h, _, err := net.SplitHostPort(host); err == nil {
+			host = h
+		}
+	}
+
+	return strings.ToLower(host)
 }
