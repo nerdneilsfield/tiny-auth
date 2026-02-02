@@ -5,6 +5,7 @@ type Config struct {
 	Server        ServerConfig      `toml:"server"`
 	Headers       HeadersConfig     `toml:"headers"`
 	Logging       LoggingConfig     `toml:"logging"`
+	Audit         AuditConfig       `toml:"audit"`
 	RateLimit     RateLimitConfig   `toml:"rate_limit"`
 	BasicAuths    []BasicAuthConfig `toml:"basic_auth"`
 	BearerTokens  []BearerConfig    `toml:"bearer_token"`
@@ -37,6 +38,12 @@ type HeadersConfig struct {
 type LoggingConfig struct {
 	Format string `toml:"format"` // 日志格式: "json" 或 "text"
 	Level  string `toml:"level"`  // 日志级别: "debug", "info", "warn", "error"
+}
+
+// AuditConfig 审计日志配置
+type AuditConfig struct {
+	Enabled bool   `toml:"enabled"` // 是否启用审计日志
+	Output  string `toml:"output"`  // 输出位置: stdout/stderr 或文件路径
 }
 
 // RateLimitConfig 速率限制配置

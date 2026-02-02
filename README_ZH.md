@@ -530,6 +530,18 @@ curl http://localhost:8080/debug/config
 
 ⚠️ **不要在公网暴露该端点**，仅在可信网络中使用。
 
+### 审计日志（生产环境推荐）
+
+tiny-auth 支持 **独立结构化审计日志流**（JSON Lines）用于合规与追溯。
+
+```toml
+[audit]
+enabled = true
+output = "./audit.log"   # 或 "stdout" / "stderr"
+```
+
+每行是一条 JSON 事件，包含 request_id、client_ip、host/uri、auth_method、policy、result、status、latency 等。
+
 ---
 
 ## 🔒 安全最佳实践

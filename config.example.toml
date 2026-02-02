@@ -48,6 +48,12 @@ include_jwt_metadata = false          # 是否包含 JWT 元数据 headers
 format = "text"  # 日志格式: "json" 或 "text"
 level = "info"   # 日志级别: "debug", "info", "warn", "error"
 
+# ===== 审计日志配置 =====
+# 独立结构化事件流（JSON Lines）
+[audit]
+enabled = false              # 是否启用审计日志
+output = "stdout"            # stdout/stderr 或文件路径（如 ./audit.log）
+
 # ===== 速率限制配置 =====
 # 防止暴力破解攻击
 [rate_limit]

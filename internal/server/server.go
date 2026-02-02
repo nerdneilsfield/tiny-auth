@@ -8,10 +8,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"go.uber.org/zap"
+
+	"github.com/nerdneilsfield/tiny-auth/internal/audit"
 	"github.com/nerdneilsfield/tiny-auth/internal/auth"
 	"github.com/nerdneilsfield/tiny-auth/internal/config"
 	"github.com/nerdneilsfield/tiny-auth/internal/ratelimit"
-	"go.uber.org/zap"
 )
 
 // Server 封装 Fiber 应用和配置
@@ -20,13 +22,14 @@ type Server struct {
 	Config       *config.Config
 	Store        *auth.AuthStore
 	Logger       *zap.Logger
+	Audit        *audit.Logger
 	RateLimiter  *ratelimit.Limiter // 速率限制器
 	trustedCIDRs []*net.IPNet       // 可信代理 CIDR 列表（解析后）
 	mu           sync.RWMutex       // 用于配置热重载时的并发控制
 }
 
 // NewServer 创建新的 HTTP 服务器
-func NewServer(cfg *config.Config, store *auth.AuthStore, logger *zap.Logger) *Server {
+func NewServer(cfg *config.Config, store *auth.AuthStore, logger *zap.Logger) (*Server, error) {
 	// 解析可信代理配置
 	trustedCIDRs := parseTrustedProxies(cfg.Server.TrustedProxies)
 	if len(trustedCIDRs) > 0 {
@@ -57,10 +60,16 @@ func NewServer(cfg *config.Config, store *auth.AuthStore, logger *zap.Logger) *S
 		logger.Info("rate limiting disabled")
 	}
 
+	auditLogger, err := audit.NewLogger(cfg.Audit)
+	if err != nil {
+		return nil, err
+	}
+
 	srv := &Server{
 		Config:       cfg,
 		Store:        store,
 		Logger:       logger,
+		Audit:        auditLogger,
 		RateLimiter:  rateLimiter,
 		trustedCIDRs: trustedCIDRs,
 	}
@@ -100,7 +109,7 @@ func NewServer(cfg *config.Config, store *auth.AuthStore, logger *zap.Logger) *S
 	}
 
 	srv.App = app
-	return srv
+	return srv, nil
 }
 
 // Start 启动服务器
@@ -124,6 +133,9 @@ func (s *Server) Start() error {
 // Shutdown 优雅关闭服务器
 func (s *Server) Shutdown() error {
 	s.Logger.Info("shutting down server")
+	if s.Audit != nil {
+		_ = s.Audit.Close()
+	}
 	return s.App.Shutdown()
 }
 
@@ -148,6 +160,16 @@ func (s *Server) Reload(cfg *config.Config, store *auth.AuthStore) {
 		)
 	} else {
 		s.RateLimiter = nil
+	}
+
+	newAudit, err := audit.NewLogger(cfg.Audit)
+	if err != nil {
+		s.Logger.Error("failed to initialize audit logger", zap.Error(err))
+	} else {
+		if s.Audit != nil {
+			_ = s.Audit.Close()
+		}
+		s.Audit = newAudit
 	}
 
 	s.Logger.Info("configuration reloaded",

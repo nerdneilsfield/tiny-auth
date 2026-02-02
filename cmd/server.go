@@ -5,12 +5,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+
 	"github.com/nerdneilsfield/tiny-auth/internal/auth"
 	"github.com/nerdneilsfield/tiny-auth/internal/config"
 	apperrors "github.com/nerdneilsfield/tiny-auth/internal/errors"
 	"github.com/nerdneilsfield/tiny-auth/internal/server"
-	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 func newServerCmd() *cobra.Command {
@@ -37,7 +38,11 @@ func runServer(cmd *cobra.Command, args []string) error {
 	store := auth.BuildStore(cfg)
 
 	// 3. 创建服务器
-	srv := server.NewServer(cfg, store, logger)
+	srv, err := server.NewServer(cfg, store, logger)
+	if err != nil {
+		logger.Fatal("Failed to initialize server", zap.Error(err))
+		return err
+	}
 
 	// 4. 设置信号处理（优雅关闭 + 配置重载）
 	sigChan := make(chan os.Signal, 1)

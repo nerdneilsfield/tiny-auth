@@ -2,17 +2,30 @@ package config
 
 import "os"
 
+const (
+	defaultPort         = "8080"
+	defaultAuthPath     = "/auth"
+	defaultHealthPath   = "/health"
+	defaultUserHeader   = "X-Auth-User"
+	defaultRoleHeader   = "X-Auth-Role"
+	defaultMethodHeader = "X-Auth-Method"
+	defaultLogFormat    = "text"
+	defaultLogLevel     = "info"
+)
+
 // ApplyDefaults 应用默认值到配置
+//
+//nolint:gocognit,gocyclo // defaulting logic is explicit for clarity
 func ApplyDefaults(cfg *Config) {
 	// 服务器默认值
 	if cfg.Server.Port == "" {
-		cfg.Server.Port = "8080"
+		cfg.Server.Port = defaultPort
 	}
 	if cfg.Server.AuthPath == "" {
-		cfg.Server.AuthPath = "/auth"
+		cfg.Server.AuthPath = defaultAuthPath
 	}
 	if cfg.Server.HealthPath == "" {
-		cfg.Server.HealthPath = "/health"
+		cfg.Server.HealthPath = defaultHealthPath
 	}
 	if cfg.Server.ReadTimeout == 0 {
 		cfg.Server.ReadTimeout = 5
@@ -23,21 +36,26 @@ func ApplyDefaults(cfg *Config) {
 
 	// Header 默认值
 	if cfg.Headers.UserHeader == "" {
-		cfg.Headers.UserHeader = "X-Auth-User"
+		cfg.Headers.UserHeader = defaultUserHeader
 	}
 	if cfg.Headers.RoleHeader == "" {
-		cfg.Headers.RoleHeader = "X-Auth-Role"
+		cfg.Headers.RoleHeader = defaultRoleHeader
 	}
 	if cfg.Headers.MethodHeader == "" {
-		cfg.Headers.MethodHeader = "X-Auth-Method"
+		cfg.Headers.MethodHeader = defaultMethodHeader
 	}
 
 	// 日志默认值
 	if cfg.Logging.Format == "" {
-		cfg.Logging.Format = "text"
+		cfg.Logging.Format = defaultLogFormat
 	}
 	if cfg.Logging.Level == "" {
-		cfg.Logging.Level = "info"
+		cfg.Logging.Level = defaultLogLevel
+	}
+
+	// 审计日志默认值
+	if cfg.Audit.Enabled && cfg.Audit.Output == "" {
+		cfg.Audit.Output = "stdout"
 	}
 
 	// 速率限制默认值

@@ -530,6 +530,18 @@ curl http://localhost:8080/debug/config
 
 ⚠️ **Do not expose this endpoint publicly.** Restrict it to trusted networks only.
 
+### Audit Logging (Recommended for Production)
+
+tiny-auth can emit a **separate structured audit log stream** (JSON Lines) for compliance and traceability.
+
+```toml
+[audit]
+enabled = true
+output = "./audit.log"   # or "stdout" / "stderr"
+```
+
+Each line is a JSON event including request_id, client_ip, host/uri, auth_method, policy, result, status, and latency.
+
 ---
 
 ## 🔒 Security Best Practices

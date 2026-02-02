@@ -7,12 +7,16 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"go.uber.org/zap"
+
+	"github.com/nerdneilsfield/tiny-auth/internal/audit"
 	"github.com/nerdneilsfield/tiny-auth/internal/auth"
 	"github.com/nerdneilsfield/tiny-auth/internal/policy"
-	"go.uber.org/zap"
 )
 
 // HandleAuth 处理 ForwardAuth 请求
+//
+//nolint:gocognit,gocyclo // auth flow intentionally aggregates multiple checks
 func (s *Server) HandleAuth(c *fiber.Ctx) error {
 	startTime := time.Now()
 
@@ -28,6 +32,7 @@ func (s *Server) HandleAuth(c *fiber.Ctx) error {
 
 	// 获取真实客户端 IP（只信任来自可信代理的 X-Forwarded-For）
 	clientIP := getClientIP(c, cfg, trustedCIDRs)
+	requestID := c.Get("X-Request-ID")
 
 	// 2. 速率限制检查
 	if rateLimiter != nil {
@@ -36,6 +41,20 @@ func (s *Server) HandleAuth(c *fiber.Ctx) error {
 			retryAfterSeconds := int64(math.Ceil(retryAfter.Seconds()))
 			if retryAfterSeconds < 1 {
 				retryAfterSeconds = 1
+			}
+			auditEvent := audit.Event{
+				RequestID:    requestID,
+				ClientIP:     clientIP,
+				DirectIP:     c.IP(),
+				TrustedProxy: isTrustedProxy(c.IP(), trustedCIDRs),
+			}
+			auditEvent.Timestamp = time.Now().UTC()
+			auditEvent.Result = "rate_limited"
+			auditEvent.Reason = "rate_limit_exceeded"
+			auditEvent.Status = fiber.StatusTooManyRequests
+			auditEvent.LatencyMs = time.Since(startTime).Milliseconds()
+			if err := s.Audit.Log(&auditEvent); err != nil {
+				s.Logger.Error("audit log failed", zap.Error(err))
 			}
 			s.Logger.Warn("rate limit exceeded",
 				zap.String("client_ip", clientIP),
@@ -52,7 +71,6 @@ func (s *Server) HandleAuth(c *fiber.Ctx) error {
 
 	// 获取转发的 headers（只信任来自可信代理的 X-Forwarded-*）
 	originalHost, originalURI, originalMethod, trusted := getForwardedHeaders(c, trustedCIDRs)
-	requestID := c.Get("X-Request-ID")
 
 	// 构建基础日志字段
 	logFields := []zap.Field{
@@ -63,6 +81,16 @@ func (s *Server) HandleAuth(c *fiber.Ctx) error {
 		zap.String("method", originalMethod),
 		zap.String("host", originalHost),
 		zap.String("uri", originalURI),
+	}
+
+	baseAudit := audit.Event{
+		RequestID:    requestID,
+		ClientIP:     clientIP,
+		DirectIP:     c.IP(),
+		TrustedProxy: trusted,
+		Host:         originalHost,
+		URI:          originalURI,
+		Method:       originalMethod,
 	}
 
 	// 如果不是来自可信代理，记录警告
@@ -77,6 +105,18 @@ func (s *Server) HandleAuth(c *fiber.Ctx) error {
 
 	// 3. 检查是否允许匿名访问
 	if matchedPolicy != nil && matchedPolicy.AllowAnonymous {
+		auditEvent := baseAudit
+		auditEvent.Timestamp = time.Now().UTC()
+		auditEvent.AuthMethod = "anonymous"
+		auditEvent.Roles = []string{"anonymous"}
+		auditEvent.Policy = matchedPolicy.Name
+		auditEvent.Result = "success"
+		auditEvent.Status = fiber.StatusOK
+		auditEvent.LatencyMs = time.Since(startTime).Milliseconds()
+		if err := s.Audit.Log(&auditEvent); err != nil {
+			s.Logger.Error("audit log failed", zap.Error(err))
+		}
+
 		s.Logger.Info("auth success - anonymous",
 			append(logFields,
 				zap.String("auth_method", "anonymous"),
@@ -128,6 +168,22 @@ func (s *Server) HandleAuth(c *fiber.Ctx) error {
 	// 5. 检查策略约束
 	if result != nil {
 		if policy.CheckPolicy(matchedPolicy, result, store) {
+			auditEvent := baseAudit
+			auditEvent.Timestamp = time.Now().UTC()
+			auditEvent.AuthMethod = result.Method
+			auditEvent.AuthName = result.Name
+			auditEvent.User = result.User
+			auditEvent.Roles = result.Roles
+			if matchedPolicy != nil {
+				auditEvent.Policy = matchedPolicy.Name
+			}
+			auditEvent.Result = "success"
+			auditEvent.Status = fiber.StatusOK
+			auditEvent.LatencyMs = time.Since(startTime).Milliseconds()
+			if err := s.Audit.Log(&auditEvent); err != nil {
+				s.Logger.Error("audit log failed", zap.Error(err))
+			}
+
 			// 认证成功，重置速率限制
 			if rateLimiter != nil {
 				rateLimiter.Reset(clientIP)
@@ -148,6 +204,23 @@ func (s *Server) HandleAuth(c *fiber.Ctx) error {
 			)
 			return SuccessResponse(c, cfg, result, matchedPolicy)
 		} else {
+			auditEvent := baseAudit
+			auditEvent.Timestamp = time.Now().UTC()
+			auditEvent.AuthMethod = result.Method
+			auditEvent.AuthName = result.Name
+			auditEvent.User = result.User
+			auditEvent.Roles = result.Roles
+			if matchedPolicy != nil {
+				auditEvent.Policy = matchedPolicy.Name
+			}
+			auditEvent.Result = "denied"
+			auditEvent.Reason = "policy_requirements_not_met"
+			auditEvent.Status = fiber.StatusUnauthorized
+			auditEvent.LatencyMs = time.Since(startTime).Milliseconds()
+			if err := s.Audit.Log(&auditEvent); err != nil {
+				s.Logger.Error("audit log failed", zap.Error(err))
+			}
+
 			// 认证成功但不满足策略要求
 			policyName := ""
 			if matchedPolicy != nil {
@@ -168,6 +241,16 @@ func (s *Server) HandleAuth(c *fiber.Ctx) error {
 	}
 
 	// 6. 认证失败
+	auditEvent := baseAudit
+	auditEvent.Timestamp = time.Now().UTC()
+	auditEvent.Result = "denied"
+	auditEvent.Reason = "invalid_credentials"
+	auditEvent.Status = fiber.StatusUnauthorized
+	auditEvent.LatencyMs = time.Since(startTime).Milliseconds()
+	if err := s.Audit.Log(&auditEvent); err != nil {
+		s.Logger.Error("audit log failed", zap.Error(err))
+	}
+
 	s.Logger.Warn("auth denied - no valid authentication",
 		append(logFields,
 			zap.String("reason", "invalid_credentials"),

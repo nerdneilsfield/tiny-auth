@@ -26,6 +26,11 @@ func Validate(cfg *Config) error {
 		return fmt.Errorf("logging: %w", err)
 	}
 
+	// 验证审计日志配置
+	if err := validateAudit(&cfg.Audit); err != nil {
+		return fmt.Errorf("audit: %w", err)
+	}
+
 	// 验证 Basic Auth
 	if err := validateBasicAuths(cfg.BasicAuths); err != nil {
 		return fmt.Errorf("basic_auth: %w", err)
@@ -139,6 +144,19 @@ func validateLogging(cfg *LoggingConfig) error {
 	return nil
 }
 
+func validateAudit(cfg *AuditConfig) error {
+	if !cfg.Enabled {
+		return nil
+	}
+
+	if strings.TrimSpace(cfg.Output) == "" {
+		return fmt.Errorf("output cannot be empty when audit is enabled")
+	}
+
+	return nil
+}
+
+//nolint:gocognit // validation is intentionally explicit
 func validateBasicAuths(configs []BasicAuthConfig) error {
 	if len(configs) == 0 {
 		return nil // Basic Auth 是可选的
@@ -264,6 +282,7 @@ func validateJWT(cfg *JWTConfig) error {
 	return nil
 }
 
+//nolint:gocognit,gocyclo // validation is intentionally explicit
 func validateRoutePolicies(policies []RoutePolicy, cfg *Config) error {
 	if len(policies) == 0 {
 		return nil
@@ -287,7 +306,8 @@ func validateRoutePolicies(policies []RoutePolicy, cfg *Config) error {
 		apiKeyNames[k.Name] = true
 	}
 
-	for _, policy := range policies {
+	for i := range policies {
+		policy := policies[i]
 		if policy.Name == "" {
 			return fmt.Errorf("name cannot be empty")
 		}
