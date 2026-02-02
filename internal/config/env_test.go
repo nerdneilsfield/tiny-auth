@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -39,8 +40,8 @@ func TestResolveValue_EmptyEnvName(t *testing.T) {
 		t.Error("Expected error for empty env var name, got nil")
 	}
 
-	if err.Error() != "empty environment variable name" {
-		t.Errorf("Expected 'empty environment variable name', got: %v", err)
+	if !strings.Contains(err.Error(), "Empty environment variable name") {
+		t.Errorf("Expected error containing 'Empty environment variable name', got: %v", err)
 	}
 }
 

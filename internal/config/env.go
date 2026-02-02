@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	apperrors "github.com/nerdneilsfield/tiny-auth/internal/errors"
 )
 
 // ResolveEnvVars 解析配置中的环境变量
@@ -57,12 +59,16 @@ func resolveValue(value string) (string, error) {
 
 	envVar := strings.TrimPrefix(value, "env:")
 	if envVar == "" {
-		return "", fmt.Errorf("empty environment variable name")
+		return "", apperrors.NewAppError(
+			apperrors.ErrCodeEnvVarResolution,
+			"Empty environment variable name",
+			nil,
+		)
 	}
 
 	envValue := os.Getenv(envVar)
 	if envValue == "" {
-		return "", fmt.Errorf("environment variable %q is not set or empty", envVar)
+		return "", apperrors.EnvVarNotSet(envVar)
 	}
 
 	return envValue, nil

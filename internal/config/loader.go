@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
+	apperrors "github.com/nerdneilsfield/tiny-auth/internal/errors"
 )
 
 // LoadConfig 从文件加载配置
@@ -19,7 +20,7 @@ func LoadConfig(path string) (*Config, error) {
 
 	// 检查文件是否存在
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return nil, fmt.Errorf("config file not found: %s", path)
+		return nil, apperrors.ConfigNotFound(path)
 	}
 
 	// 检查文件权限
@@ -32,7 +33,7 @@ func LoadConfig(path string) (*Config, error) {
 	// 解析 TOML
 	cfg := &Config{}
 	if _, err := toml.DecodeFile(path, cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %w", err)
+		return nil, apperrors.ConfigInvalid(err)
 	}
 
 	// 应用默认值
@@ -63,7 +64,7 @@ func CheckFilePermissions(path string) error {
 
 	// 检查组和其他用户的读权限
 	if mode&0077 != 0 {
-		return fmt.Errorf("config file %s has insecure permissions %o (should be 0600)", path, mode)
+		return apperrors.ConfigPermissionError(path, fmt.Sprintf("%o", mode))
 	}
 
 	return nil
