@@ -73,6 +73,8 @@ dockers:
       - "ghcr.io/nerdneilsfield/{{.ProjectName}}:latest-amd64"
     use: buildx
     dockerfile: Dockerfile.goreleaser
+    extra_files:
+      - config.example.toml
     build_flag_templates:
       - --platform=linux/amd64
       - --label=org.opencontainers.image.title={{.ProjectName}}
@@ -91,6 +93,8 @@ dockers:
     use: buildx
     goarch: arm64
     dockerfile: Dockerfile.goreleaser
+    extra_files:
+      - config.example.toml
     build_flag_templates:
       - --platform=linux/arm64
       - --label=org.opencontainers.image.title={{.ProjectName}}
@@ -108,6 +112,8 @@ dockers:
       - "nerdneils/{{.ProjectName}}:latest-amd64"
     use: buildx
     dockerfile: Dockerfile.goreleaser
+    extra_files:
+      - config.example.toml
     build_flag_templates:
       - --platform=linux/amd64
       - --label=org.opencontainers.image.title={{.ProjectName}}
@@ -126,6 +132,8 @@ dockers:
     use: buildx
     goarch: arm64
     dockerfile: Dockerfile.goreleaser
+    extra_files:
+      - config.example.toml
     build_flag_templates:
       - --platform=linux/arm64
       - --label=org.opencontainers.image.title={{.ProjectName}}
