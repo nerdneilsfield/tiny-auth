@@ -62,6 +62,19 @@ tiny-auth is available from two registries for fast access worldwide:
 - `linux/arm64` - ARM64 / Apple Silicon
 - `linux/arm/v7` - ARMv7
 
+## Homebrew / Scoop
+
+```bash
+# macOS / Linux
+brew install --cask nerdneilsfield/apps/tiny-auth
+```
+
+```powershell
+# Windows
+scoop bucket add nerdneilsfield https://github.com/nerdneilsfield/homebrew-apps
+scoop install nerdneilsfield/tiny-auth
+```
+
 ## 🚀 Quick Start
 
 ### Option 1: Docker (Recommended)
