@@ -191,3 +191,33 @@ release:
   footer: |
     ## What's Changed
     **Full Changelog**: https://github.com/nerdneilsfield/tiny-auth/compare/{{.PreviousTag}}...{{.Tag}}
+
+# Publish to the nerdneilsfield/homebrew-apps tap and Scoop bucket.
+homebrew_casks:
+  - name: tiny-auth
+    homepage: https://github.com/nerdneilsfield/tiny-auth
+    description: Lightweight authentication service for Traefik ForwardAuth
+    binaries:
+      - tiny-auth
+    directory: Casks
+    repository:
+      owner: nerdneilsfield
+      name: homebrew-apps
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    hooks:
+      post:
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/tiny-auth"]
+          end
+
+scoops:
+  - name: tiny-auth
+    homepage: https://github.com/nerdneilsfield/tiny-auth
+    description: Lightweight authentication service for Traefik ForwardAuth
+    license: MIT
+    directory: bucket
+    repository:
+      owner: nerdneilsfield
+      name: homebrew-apps
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
