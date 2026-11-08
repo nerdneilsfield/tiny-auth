@@ -62,6 +62,19 @@ tiny-auth 提供两个镜像源，国内外均可快速拉取：
 - `linux/arm64` - ARM64 / Apple Silicon
 - `linux/arm/v7` - ARMv7
 
+## 通过 Homebrew / Scoop 安装
+
+```bash
+# macOS / Linux
+brew install --cask nerdneilsfield/apps/tiny-auth
+```
+
+```powershell
+# Windows
+scoop bucket add nerdneilsfield https://github.com/nerdneilsfield/homebrew-apps
+scoop install nerdneilsfield/tiny-auth
+```
+
 ## 🚀 快速开始
 
 ### 方式一：Docker（推荐）
